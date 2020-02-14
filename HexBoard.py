@@ -78,12 +78,11 @@ class HexBoard:
         while not self.quit:
             if self.blue_to_move:
                 command = input("Enter a command ")
-                if bool(re.search(HexBoard.PATTERN, command)): # Needs to be extended to support board sizes of > 10
+                if valid_command(command, self.board_size): # Needs to be extended to support board sizes of > 10
                     command = list(split_text(command))
                     command[0].lower()
-                    if (valid_command(command, self.board_size)):
-                        x, y = (ord(command[0])- 97), int(command[1])
-                        self.place((x, y), HexBoard.BLUE)
+                    x, y = (ord(command[0])- 97), int(command[1])
+                    self.place((x, y), HexBoard.BLUE)
                 elif command == 'quit' or command == 'q':
                     self.quit = True
                     return
@@ -536,10 +535,11 @@ def split_text(s):
         yield ''.join(g)
 
 def valid_command(command, board_size):
-    if(command[0].isalpha() and ((ord(command[0])- 97) < board_size) and command[1].isdigit() and int(command[1]) < board_size and int(command[1]) >= 0):
-        return True
-    else:
-        return False
+    if bool(re.search(HexBoard.PATTERN, command)):
+        if(command[0].isalpha() and ((ord(command[0]) - 97) < board_size) and command[1].isdigit() and int(command[1]) < board_size and int(command[1]) >= 0):
+            return True
+        else:
+            return False
 
 def ai_Game_plan(self):
     return self.place((2, 2), HexBoard.RED)
