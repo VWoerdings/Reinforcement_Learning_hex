@@ -6,7 +6,7 @@ from HexBoard import HexBoard
 def main():
     enable_GUI = True
     enable_interactive_text = True
-    board = HexBoard(10, enable_GUI=enable_GUI, interactive_text=enable_interactive_text)
+    board = HexBoard(3, enable_GUI=enable_GUI, interactive_text=enable_interactive_text)
 
     if not enable_GUI and not enable_interactive_text:
 

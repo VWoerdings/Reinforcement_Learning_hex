@@ -2,7 +2,9 @@ import tkinter as tk
 from math import cos, tan, pi
 from tkinter import messagebox
 from RegularPolygon import RegularPolygon
-
+import re
+from itertools import groupby
+import os
 
 class HexBoard:
     """A class that stores and computes the state of a hex board.
@@ -24,6 +26,10 @@ class HexBoard:
     BLUE = 1
     RED = 2
     EMPTY = 3
+    
+    #Pattern match 
+    PATTERN = '[a-zA-Z][0-9]'
+
 
     def __init__(self, board_size, enable_GUI=False, interactive_text=False):
         """Initializes the board and GUI if applicable.
@@ -70,32 +76,30 @@ class HexBoard:
         self.quit = False
         self.print_command_help()
         while not self.quit:
-            command = input("Enter a command ")
-            if len(command) == 2: # Needs to be extended to support board sizes of > 10
-                if command[0].isalpha() and command[0].islower() and command[1].isnumeric():
-                    x, y = self.string_to_coord(command)
-                    if not self.is_valid((x, y)):
-                        print('Coordinates \'' + command + '\' not valid, please enter valid coordinates')
-                        continue
-                    if self.blue_to_move:
+            if self.blue_to_move:
+                command = input("Enter a command ")
+                if bool(re.search(HexBoard.PATTERN, command)): # Needs to be extended to support board sizes of > 10
+                    command = list(split_text(command))
+                    command[0].lower()
+                    if (valid_command(command, self.board_size)):
+                        x, y = (ord(command[0])- 97), int(command[1])
                         self.place((x, y), HexBoard.BLUE)
-                    else:
-                        self.place((x, y), HexBoard.RED)
+                elif command == 'quit' or command == 'q':
+                    self.quit = True
+                    return
+                elif command == 'print' or command == 'p':
+                    self.print()
+                elif command == 'help' or command == 'h':
+                    self.print_command_help()
+                elif command == 'undo' or command == 'u':
+                    self.undo_move()
+                elif command == 'reset' or command == 'r':
+                    self.reset_board()
                 else:
-                    print('Coordinates \'' + command + '\' not valid, please enter valid coordinates')
-            elif command == 'quit' or command == 'q':
-                self.quit = True
-                return
-            elif command == 'print' or command == 'p':
-                self.print()
-            elif command == 'help' or command == 'h':
-                self.print_command_help()
-            elif command == 'undo' or command == 'u':
-                self.undo_move()
-            elif command == 'reset' or command == 'r':
-                self.reset_board()
+                    print('Command \'' + command + '\' not recognized, please enter a valid command.')
             else:
-                print('Command \'' + command + '\' not recognized, please enter a valid command.')
+                ai_Game_plan(self)
+
 
     def is_valid(self, coordinates):
         """ Checks if coordinates are within the bounds of the grid.
@@ -194,6 +198,8 @@ class HexBoard:
             self.board[coordinates] = color
         else:
             print("The game is already over.")
+            os._exit(1)
+
 
 
     @staticmethod
@@ -523,3 +529,17 @@ class HexBoard:
         self.canvas.create_line(bottom_border, fill='red', width=HexBoard.BORDER_WIDTH)
         self.canvas.create_line(left_border, fill='blue', width=HexBoard.BORDER_WIDTH)
         self.canvas.create_line(right_border, fill='blue', width=HexBoard.BORDER_WIDTH)
+
+
+def split_text(s):
+    for k, g in groupby(s, str.isalpha):
+        yield ''.join(g)
+
+def valid_command(command, board_size):
+    if(command[0].isalpha() and ((ord(command[0])- 97) < board_size) and command[1].isdigit() and int(command[1]) < board_size and int(command[1]) >= 0):
+        return True
+    else:
+        return False
+
+def ai_Game_plan(self):
+    return self.place((2, 2), HexBoard.RED)
