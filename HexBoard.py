@@ -5,6 +5,7 @@ from RegularPolygon import RegularPolygon
 import re
 from itertools import groupby
 import os
+from TerminatorHex import TerminatorHex
 
 class HexBoard:
     """A class that stores and computes the state of a hex board.
@@ -87,7 +88,7 @@ class HexBoard:
                     self.quit = True
                     return
                 elif command == 'print' or command == 'p':
-                    self.print()
+                    self.printBroad()
                 elif command == 'help' or command == 'h':
                     self.print_command_help()
                 elif command == 'undo' or command == 'u':
@@ -97,7 +98,10 @@ class HexBoard:
                 else:
                     print('Command \'' + command + '\' not recognized, please enter a valid command.')
             else:
-                ai_Game_plan(self)
+               th = TerminatorHex(self)
+               x = th.InitiateTerminator()
+               self.place((x[0], x[1]), HexBoard.RED)
+               self.printBroad()
 
 
     def is_valid(self, coordinates):
@@ -318,7 +322,7 @@ class HexBoard:
         return False
 
 
-    def print(self):
+    def printBroad(self):
         """Prints the board to the console."""
         print("   ", end="")
         for y in range(self.board_size):
@@ -540,6 +544,3 @@ def valid_command(command, board_size):
             return True
         else:
             return False
-
-def ai_Game_plan(self):
-    return self.place((2, 2), HexBoard.RED)

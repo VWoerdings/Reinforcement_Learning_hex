@@ -26,7 +26,7 @@ def main():
             board.place((0, 2), winner)
             assert (board.check_win(winner) == True)
             assert (board.check_win(loser) == False)
-            board.print()
+            board.printBroad()
         endable_board = HexBoard(4)
         # sanity check that random play will at some point end the game
         while not endable_board.game_over:
@@ -35,7 +35,7 @@ def main():
         assert (endable_board.check_win(HexBoard.RED) == True)
         assert (endable_board.check_win(HexBoard.BLUE) == False)
         print("Randomly filled board")
-        endable_board.print()
+        endable_board.printBroad()
 
         neighbor_check = HexBoard(5)
         assert (neighbor_check.get_neighbors((0, 0)) == [(1, 0), (0, 1)])
