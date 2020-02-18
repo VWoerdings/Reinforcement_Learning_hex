@@ -1,6 +1,4 @@
-
 class TerminatorHex:
-
     """This is a highly skilled hex game engine which will terminate opponent or terminate itself.
     """
 
@@ -11,7 +9,6 @@ class TerminatorHex:
         """
         self.board = boardData
 
-
     def InitiateTerminator(self):
         """initiating distruction
         Args:
@@ -19,6 +16,6 @@ class TerminatorHex:
         """
         return (2, 2)
 
-    def terminateMinMax(self , depth):
-        if(depth == 0 or self.board.gameOver):
+    def terminateMinMax(self, depth):
+        if (depth == 0 or self.board.gameOver):
             return
