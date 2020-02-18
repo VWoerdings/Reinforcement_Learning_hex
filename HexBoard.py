@@ -117,7 +117,7 @@ class HexBoard:
         """Prints a list of available commands for the interactive text mode
         """
         print('List of commands:')
-        print('\thelp or h:\t\tPrint this overiew.')
+        print('\thelp or h:\t\tPrint this overview.')
         print('\tcoordinates:\tPlay at the given position (for example \'a0\').')
         print('\tprint or p:\t\tPrint the current state of the board.')
         print('\tquit or q:\t\tQuit the program.')
@@ -249,11 +249,11 @@ class HexBoard:
 
 
     def get_neighbors(self, coordinates):
-        """Gets list of neighbours of a given position.
+        """Gets list of neighbors of a given position.
         Args:
-            coordinates (int, int): Coordinates to calculate neigbours for.
+            coordinates (int, int): Coordinates to calculate neighbors for.
         Returns:
-            :obj:`list` of (int,int): List of neighbour coordinates.
+            :obj:`list` of (int,int): List of neighbors coordinates.
         """
         (cx, cy) = coordinates
         neighbors = []
@@ -297,7 +297,7 @@ class HexBoard:
 
 
     def get_move_list(self):
-        """Gets the history of plyaed moves.
+        """Gets the history of played moves.
         Returns:
             :obj:`list` of (str): List of played moves.
         Examples:
