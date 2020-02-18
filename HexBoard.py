@@ -1,11 +1,11 @@
+import re
 import tkinter as tk
+from itertools import groupby
 from math import cos, tan, pi
 from tkinter import messagebox
+
 from RegularPolygon import RegularPolygon
-import re
-from itertools import groupby
-import os
-from TerminatorHex import TerminatorHex
+
 
 class HexBoard:
     """A class that stores and computes the state of a hex board.
@@ -27,33 +27,51 @@ class HexBoard:
     BLUE = 1
     RED = 2
     EMPTY = 3
-    
-    #Pattern match 
+
+    # Pattern match
     PATTERN = '[a-zA-Z][0-9]'
 
-
-    def __init__(self, board_size, enable_GUI=False, interactive_text=False):
+    def __init__(self, board_size, n_players=2, enable_GUI=False, interactive_text=False, ai_move=None,
+                 ai_color=None):
         """Initializes the board and GUI if applicable.
         Args:
             board_size (int): Size of the hexagon grid.
+            n_players (int): Number of controllable players. Can be 0, 1 or 2.
             enable_GUI (bool, optional): Enables an interactive GUI. Default is False.
             interactive_text (bool, optional): Enables an interactive text mode. Sets enable_GUI to False. Default is False. Maximum board size for this mode is currently 10.
+            ai_move (function): Function that generates a the moves for the AI.
+            ai_color (int): Only applicable when n_players is 1. Determines which player is controlled by ai. Default is Hexboard.RED.
         """
         self.board = {}
         self.board_size = board_size
-        self.game_over = False
         for x in range(board_size):
             for y in range(board_size):
                 self.board[x, y] = HexBoard.EMPTY
 
-        self.move_list = []
+        self.move_list = []  # List containing history of made moves
+        self.game_over = False
+        self.blue_to_move = True  # Blue is the first player
 
-        self.blue_to_move = True
         self.enable_GUI = enable_GUI
-
         self.interactive_text = interactive_text
-        self.quit = False
-        if interactive_text:
+
+        if n_players in [0, 1, 2]:
+            self.n_players = n_players
+            self.ai_move = ai_move
+            if ai_color is None:
+                self.ai_color = HexBoard.RED
+            else:
+                self.ai_color = ai_color
+        else:
+            self.n_players = None
+            self.ai_move = None
+            raise SystemExit('Wrong number of players %d:' % n_players)
+        if n_players == 2:
+            self.enable_GUI = False
+            print("GUI disabled: no players.")
+
+        if self.interactive_text:
+            self.quit = False
             self.enable_GUI = False
             self.interactive_text_loop()
 
@@ -69,6 +87,10 @@ class HexBoard:
             self.canvas.pack()
 
             self.canvas.bind("<Button-1>", self.on_click)
+            if self.ai_to_move():
+                x, y = self.ai_move(self)
+                self.place((x, y))
+
             self.create_GUI()
             self.window.mainloop()
 
@@ -76,33 +98,39 @@ class HexBoard:
         """Contains an infinite loop that reads and handles commands from the console."""
         self.quit = False
         self.print_command_help()
-        while not self.quit:
-            if self.blue_to_move:
-                command = input("Enter a command ")
-                if valid_command(command, self.board_size): # Needs to be extended to support board sizes of > 10
-                    command = list(split_text(command))
-                    command[0].lower()
-                    x, y = (ord(command[0])- 97), int(command[1])
-                    self.place((x, y), HexBoard.BLUE)
-                elif command == 'quit' or command == 'q':
-                    self.quit = True
-                    return
-                elif command == 'print' or command == 'p':
-                    self.printBroad()
-                elif command == 'help' or command == 'h':
-                    self.print_command_help()
-                elif command == 'undo' or command == 'u':
-                    self.undo_move()
-                elif command == 'reset' or command == 'r':
-                    self.reset_board()
-                else:
-                    print('Command \'' + command + '\' not recognized, please enter a valid command.')
-            else:
-               th = TerminatorHex(self)
-               x = th.InitiateTerminator()
-               self.place((x[0], x[1]), HexBoard.RED)
-               self.printBroad()
+        if self.ai_to_move():
+            x, y = self.ai_move(self)
+            self.place((x, y))
+            self.print_board()
 
+        while not self.quit and not self.game_over:
+            command = input("Enter a command ")
+            if valid_command(command, self.board_size):  # Todo: Needs to be extended to support board sizes of > 10
+                command = list(split_text(command))
+                command[0].lower()
+                x, y = (ord(command[0]) - 97), int(command[1])
+                if self.blue_to_move:
+                    self.place_with_color((x, y), HexBoard.BLUE)
+                else:
+                    self.place_with_color((x, y), HexBoard.RED)
+            elif command == 'quit' or command == 'q':
+                self.quit = True
+                return
+            elif command == 'print' or command == 'p':
+                self.print_board()
+            elif command == 'help' or command == 'h':
+                self.print_command_help()
+            elif command == 'undo' or command == 'u':
+                self.undo_move()
+            elif command == 'reset' or command == 'r':
+                self.reset_board()
+            else:
+                print('Command \'' + command + '\' not recognized, please enter a valid command.')
+
+                # th = TerminatorHex(self)
+                # x = th.InitiateTerminator()
+                # self.place((x[0], x[1]), HexBoard.RED)
+                # self.printBroad()
 
     def is_valid(self, coordinates):
         """ Checks if coordinates are within the bounds of the grid.
@@ -117,7 +145,7 @@ class HexBoard:
         """Prints a list of available commands for the interactive text mode
         """
         print('List of commands:')
-        print('\thelp or h:\t\tPrint this overview.')
+        print('\thelp or h:\t\tPrint this overiew.')
         print('\tcoordinates:\tPlay at the given position (for example \'a0\').')
         print('\tprint or p:\t\tPrint the current state of the board.')
         print('\tquit or q:\t\tQuit the program.')
@@ -181,9 +209,19 @@ class HexBoard:
             if self.enable_GUI:
                 messagebox.showinfo("Window", output_string)
 
+    def place(self, coordinates):
+        """Determines the turn color and calls self.place_with_color() to place it.
+        Args:
+            coordinates (int, int): X and y coordinates to check.
+        """
+        if self.blue_to_move:
+            color = HexBoard.BLUE
+        else:
+            color = HexBoard.RED
+        self.place_with_color(coordinates, color)
 
-    def place(self, coordinates, color):
-        """Places a given color at given coordinates.
+    def place_with_color(self, coordinates, color):
+        """Places a given color at given coordinates. Then, if applicable, makes an ai move. Also prints the board if in interactive text mode.
         Args:
             coordinates (int, int): X and y coordinates to check.
             color (int): Color to place.
@@ -201,9 +239,30 @@ class HexBoard:
             self.board[coordinates] = color
         else:
             print("The game is already over.")
-            os._exit(1)
+            # os._exit(1)
+            # Do not exit the game to allow undoing.
+        if self.interactive_text:
+            self.print_board()
+        if self.ai_to_move():
+            x, y = self.ai_move(self)
+            self.place((x, y))
 
-
+    def ai_to_move(self):
+        """Determines if the AI has to make a move.
+        Returns:
+            (bool): True if the next move has to be an AI move.
+        """
+        if self.game_over:
+            return False
+        if self.n_players == 1:
+            if self.ai_color == HexBoard.BLUE and self.blue_to_move:
+                return True
+            if self.ai_color == HexBoard.RED and not self.blue_to_move:
+                return True
+        elif self.n_players == 0:
+            return True
+        else:
+            return False
 
     @staticmethod
     def coord_to_string(coordinates):
@@ -217,7 +276,6 @@ class HexBoard:
             'a0'
         """
         return "" + str(chr(coordinates[0] + 97)) + str(coordinates[1])
-
 
     @staticmethod
     def string_to_coord(input_string):
@@ -234,7 +292,6 @@ class HexBoard:
         y = int(input_string[1])
         return x, y
 
-
     @staticmethod
     def get_opposite_color(current_color):
         """Gets opposite to given color.
@@ -247,13 +304,12 @@ class HexBoard:
             return HexBoard.RED
         return HexBoard.BLUE
 
-
     def get_neighbors(self, coordinates):
-        """Gets list of neighbors of a given position.
+        """Gets list of neighbours of a given position.
         Args:
-            coordinates (int, int): Coordinates to calculate neighbors for.
+            coordinates (int, int): Coordinates to calculate neigbours for.
         Returns:
-            :obj:`list` of (int,int): List of neighbors coordinates.
+            :obj:`list` of (int,int): List of neighbour coordinates.
         """
         (cx, cy) = coordinates
         neighbors = []
@@ -264,7 +320,6 @@ class HexBoard:
         if cy + 1 < self.board_size: neighbors.append((cx, cy + 1))
         if cy - 1 >= 0:   neighbors.append((cx, cy - 1))
         return neighbors
-
 
     def border(self, color, move):
         """Checks if a hexagon is located on the right (if blue) or bottom (if blue) border of the board.
@@ -277,7 +332,6 @@ class HexBoard:
         (nx, ny) = move
         return (color == HexBoard.BLUE and nx == self.board_size - 1) or (
                 color == HexBoard.RED and ny == self.board_size - 1)
-
 
     def traverse(self, color, move, visited):
         """Traverses hexagons from top to bottom (if red) or from left to right (if blue).
@@ -295,9 +349,8 @@ class HexBoard:
             if self.traverse(color, n, visited): return True
         return False
 
-
     def get_move_list(self):
-        """Gets the history of played moves.
+        """Gets the history of plyaed moves.
         Returns:
             :obj:`list` of (str): List of played moves.
         Examples:
@@ -305,7 +358,6 @@ class HexBoard:
             ['a0', 'b1', 'c0']
         """
         return self.move_list
-
 
     def check_win(self, color):
         """Checks if there is a winner.
@@ -321,8 +373,7 @@ class HexBoard:
                 return True
         return False
 
-
-    def printBroad(self):
+    def print_board(self):
         """Prints the board to the console."""
         print("   ", end="")
         for y in range(self.board_size):
@@ -347,9 +398,9 @@ class HexBoard:
             print("|")
         print("   -----------------------")
         turn_player = "blue" if self.blue_to_move else "red"
-        if not self.game_over:
+        if not self.game_over and self.n_players in [1, 2]:
+            # Do not print if there are not players
             print("It is currently " + turn_player + "\'s turn.")
-
 
     def create_GUI(self):
         """Binds buttons to the open window and calls Hexboard.draw_grid()
@@ -366,7 +417,6 @@ class HexBoard:
 
         self.draw_grid()
 
-
     def on_click(self, event):
         """Determines action when the GUI is clicked."""
         if self.canvas.find_withtag(tk.CURRENT):
@@ -375,12 +425,12 @@ class HexBoard:
                     x, y = self.hex_to_coord(self.canvas.coords(tk.CURRENT))
                     if self.blue_to_move:
                         self.canvas.itemconfig(tk.CURRENT, fill="blue")
-                        self.place((x, y), HexBoard.BLUE)
+                        self.place_with_color((x, y), HexBoard.BLUE)
                     else:
                         self.canvas.itemconfig(tk.CURRENT, fill="red")
-                        self.place((x, y), HexBoard.RED)
+                        self.place_with_color((x, y), HexBoard.RED)
                     # print("You clicked on " + self.hex_to_string(self.canvas.coords(tk.CURRENT)))
-
+                    # Todo: update canvas after ai moves (maybe with move_list)
 
     def reset_board(self):
         """Resets board and GUI"""
@@ -398,7 +448,6 @@ class HexBoard:
                 if self.canvas.type(item) == 'polygon':
                     self.canvas.itemconfig(item, fill="white")
 
-
     def undo_move(self):
         """Undoes the last made move"""
         if len(self.move_list) == 0:
@@ -415,7 +464,7 @@ class HexBoard:
             self.blue_to_move = False
         elif self.board[(x, y)] == HexBoard.BLUE:
             self.blue_to_move = True
-        self.place((x, y), HexBoard.EMPTY)
+        self.place_with_color((x, y), HexBoard.EMPTY)
         if self.enable_GUI:
             dx = 2
             dy = dx
@@ -424,7 +473,6 @@ class HexBoard:
             for item in test:
                 if self.canvas.type(item) == 'polygon':
                     self.canvas.itemconfig(item, fill="white")
-
 
     @staticmethod
     def hex_to_coord(coordinates):
@@ -447,7 +495,6 @@ class HexBoard:
         x_int = round((x_average - (HexBoard.X_PADDING + y * HexBoard.HEX_SIZE / 2)) / HexBoard.HEX_SIZE)
         return x_int, y
 
-
     @staticmethod
     def coord_to_hex(coordinates):
         """Converts grid coordinates to hexagon coordinates.
@@ -461,7 +508,6 @@ class HexBoard:
         x_mid = HexBoard.X_PADDING + y * HexBoard.HEX_SIZE / 2 + x * HexBoard.HEX_SIZE
         y_mid = HexBoard.Y_PADDING + y * ((HexBoard.CROSS_LENGTH + HexBoard.SIDE_LENGTH) / 2)
         return x_mid, y_mid
-
 
     @staticmethod
     def hex_to_string(coordinates):
@@ -486,9 +532,9 @@ class HexBoard:
         # return "" + str(x) + str(y)
         return HexBoard.coord_to_string(HexBoard.hex_to_coord(coordinates))
 
-
     def draw_grid(self):
         """Draws a grid of hexagons"""
+        # Todo: use move_list to draw initial hexagon if ai is the first player.
         top_border = []
         bottom_border = []
         left_border = []
@@ -538,9 +584,11 @@ def split_text(s):
     for k, g in groupby(s, str.isalpha):
         yield ''.join(g)
 
+
 def valid_command(command, board_size):
     if bool(re.search(HexBoard.PATTERN, command)):
-        if(command[0].isalpha() and ((ord(command[0]) - 97) < board_size) and command[1].isdigit() and int(command[1]) < board_size and int(command[1]) >= 0):
+        if (command[0].isalpha() and ((ord(command[0]) - 97) < board_size) and command[1].isdigit() and int(
+                command[1]) < board_size and int(command[1]) >= 0):
             return True
         else:
             return False

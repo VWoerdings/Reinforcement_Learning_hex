@@ -1,12 +1,29 @@
+import random
 import numpy as np
 
 from HexBoard import HexBoard
 
 
 def main():
-    enable_GUI = True
+    enable_GUI = False
     enable_interactive_text = True
-    board = HexBoard(3, enable_GUI=enable_GUI, interactive_text=enable_interactive_text)
+    board_size = 10
+    n_players = 0
+    ai_color = HexBoard.RED
+
+    def random_move(board_class):
+        """Returns random move
+        """
+        while True:
+            x = random.randint(0, board_size - 1)
+            y = random.randint(0, board_size - 1)
+            move = HexBoard.coord_to_string((x, y))
+            if move not in board_class.move_list:
+                new_move = board_class.is_empty((x, y))
+                return x, y
+
+    board = HexBoard(board_size, n_players=n_players, enable_GUI=enable_GUI, interactive_text=enable_interactive_text,
+                     ai_move=random_move, ai_color=ai_color)
 
     if not enable_GUI and not enable_interactive_text:
 
@@ -15,27 +32,27 @@ def main():
             winner = HexBoard.RED if i == 0 else HexBoard.BLUE
             loser = HexBoard.BLUE if i == 0 else HexBoard.RED
             board = HexBoard(3)
-            board.place((1, 1), loser)
-            board.place((2, 1), loser)
-            board.place((1, 2), loser)
-            board.place((2, 2), loser)
-            board.place((0, 0), winner)
-            board.place((1, 0), winner)
-            board.place((2, 0), winner)
-            board.place((0, 1), winner)
-            board.place((0, 2), winner)
+            board.place_with_color((1, 1), loser)
+            board.place_with_color((2, 1), loser)
+            board.place_with_color((1, 2), loser)
+            board.place_with_color((2, 2), loser)
+            board.place_with_color((0, 0), winner)
+            board.place_with_color((1, 0), winner)
+            board.place_with_color((2, 0), winner)
+            board.place_with_color((0, 1), winner)
+            board.place_with_color((0, 2), winner)
             assert (board.check_win(winner) == True)
             assert (board.check_win(loser) == False)
-            board.printBroad()
+            board.print_board()
         endable_board = HexBoard(4)
         # sanity check that random play will at some point end the game
         while not endable_board.game_over:
-            endable_board.place((np.random.randint(0, 4), np.random.randint(0, 4)), HexBoard.RED)
+            endable_board.place_with_color((np.random.randint(0, 4), np.random.randint(0, 4)), HexBoard.RED)
         assert (endable_board.game_over == True)
         assert (endable_board.check_win(HexBoard.RED) == True)
         assert (endable_board.check_win(HexBoard.BLUE) == False)
         print("Randomly filled board")
-        endable_board.printBroad()
+        endable_board.print_board()
 
         neighbor_check = HexBoard(5)
         assert (neighbor_check.get_neighbors((0, 0)) == [(1, 0), (0, 1)])
