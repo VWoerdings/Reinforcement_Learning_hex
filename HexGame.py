@@ -5,7 +5,7 @@ from HexBoard import HexBoard
 
 
 def main():
-    enable_GUI = False
+    enable_GUI = True
     enable_interactive_text = True
     board_size = 10
     n_players = 0
