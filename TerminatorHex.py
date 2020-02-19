@@ -1,3 +1,5 @@
+import copy
+
 class TerminatorHex:
     """This is a highly skilled hex game engine which will terminate opponent or terminate itself.
     """
