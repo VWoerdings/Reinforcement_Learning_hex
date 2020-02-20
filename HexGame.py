@@ -8,8 +8,8 @@ import TerminatorHex
 def main():
     enable_GUI = False
     enable_interactive_text = True
-    board_size = 4
-    n_players = 1
+    board_size = 5
+    n_players = 0
     ai_color = HexBoard.RED
 
     def random_move(board_class):

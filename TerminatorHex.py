@@ -115,13 +115,13 @@ def alpha_beta(hex_board, depth, max_or_min, alpha, beta, evaluator):
     
     # minimax with alpha-beta pruning:
     if (depth <= 0 or is_game_over or len(moves) == 0): # end state
-        return (evaluator(hex_board, maximiser_color))    
+        return (evaluator(hex_board, maximiser_color))
     elif (max_or_min == 'max'): # maximise
         value = float('-inf')
         for move in moves:
             deepened_board = copy.deepcopy(hex_board)
             deepened_board.set_position_auto(move)
-            new_value = minimax(deepened_board, depth - 1, 'min', evaluator)
+            new_value = alpha_beta(deepened_board, depth - 1, 'min', alpha, beta, evaluator)
             value = [value, new_value][new_value > value]
             alpha = [alpha, new_value][new_value > alpha]
             if (alpha >= beta): # beta cutoff
@@ -132,7 +132,7 @@ def alpha_beta(hex_board, depth, max_or_min, alpha, beta, evaluator):
         for move in moves:
             deepened_board = copy.deepcopy(hex_board)
             deepened_board.set_position_auto(move)
-            new_value = minimax(deepened_board, depth - 1, 'max', evaluator)
+            new_value = alpha_beta(deepened_board, depth - 1, 'max', alpha, beta, evaluator)
             value = [value, new_value][new_value < value]
             beta = [beta, new_value][new_value < beta]
             if (alpha >= beta): # alpha cutoff
