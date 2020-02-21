@@ -594,6 +594,7 @@ class HexBoard:
     def set_position_auto(self, position):
         """set_position with blue_to_move check"""
         color = [HexBoard.RED, HexBoard.BLUE][self.blue_to_move]
+        self.blue_to_move = [True, False][self.blue_to_move] # flip blue_to_move
         self.set_position(position, color)
 
 def split_text(s):
