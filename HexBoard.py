@@ -517,19 +517,6 @@ class HexBoard:
         Returns:
             str: Coordinates in string format
         """
-        # x_list = []
-        # y_list = []
-        # i = 0
-        # while i < len(coordinates):
-        #     x_list.append(coordinates[i])
-        #     y_list.append(coordinates[i + 1])
-        #     i += 2
-        # x_average = sum(x_list) / len(x_list)
-        # y_average = sum(y_list) / len(y_list)
-        # y = round((y_average - HexBoard.Y_PADDING) / ((HexBoard.CROSS_LENGTH + HexBoard.SIDE_LENGTH) / 2))
-        # x_int = round((x_average - (HexBoard.X_PADDING + y * HexBoard.HEX_SIZE / 2)) / HexBoard.HEX_SIZE)
-        # x = chr(x_int + 97)
-        # return "" + str(x) + str(y)
         return HexBoard.coord_to_string(HexBoard.hex_to_coord(coordinates))
 
     def draw_grid(self):
@@ -578,24 +565,28 @@ class HexBoard:
         self.canvas.create_line(bottom_border, fill='red', width=HexBoard.BORDER_WIDTH)
         self.canvas.create_line(left_border, fill='blue', width=HexBoard.BORDER_WIDTH)
         self.canvas.create_line(right_border, fill='blue', width=HexBoard.BORDER_WIDTH)
-        
+
     def get_free_positions(self):
+        """Returns free positions on the board
+        Returns:
+             :obj:`list` of (int,int): List of empty positions on the board."""
         positions = []
         for k in self.board.keys():
             if self.board[k] == HexBoard.EMPTY:
                 positions.append(k)
-                
+
         return positions
-        
+
     def set_position(self, position, color):
-        """Place, ignore win checks and board checks"""
+        """Same as self.place, ignores win checks and board checks"""
         self.board[position] = color
-    
+
     def set_position_auto(self, position):
-        """set_position with blue_to_move check"""
+        """Sampe as self.set_position with blue_to_move check"""
         color = [HexBoard.RED, HexBoard.BLUE][self.blue_to_move]
-        self.blue_to_move = [True, False][self.blue_to_move] # flip blue_to_move
+        self.blue_to_move = [True, False][self.blue_to_move]  # flip blue_to_move
         self.set_position(position, color)
+
 
 def split_text(s):
     for k, g in groupby(s, str.isalpha):

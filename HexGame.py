@@ -1,27 +1,15 @@
-import random
 import numpy as np
 
-from HexBoard import HexBoard
 import TerminatorHex
+from HexBoard import HexBoard
 
 
-def main():
+if __name__ == '__main__':
     enable_GUI = True
     enable_interactive_text = True
     board_size = 5
-    n_players = 0
+    n_players = 1
     ai_color = HexBoard.RED
-
-    def random_move(board_class):
-        """Returns random move
-        """
-        while True:
-            x = random.randint(0, board_size - 1)
-            y = random.randint(0, board_size - 1)
-            move = HexBoard.coord_to_string((x, y))
-            if move not in board_class.move_list:
-                new_move = board_class.is_empty((x, y))
-                return x, y
 
     terminator_AI = TerminatorHex.TerminatorHex(3, TerminatorHex.dijkstra_score_heuristic)
     board = HexBoard(board_size, n_players=n_players, enable_GUI=enable_GUI, interactive_text=enable_interactive_text,
