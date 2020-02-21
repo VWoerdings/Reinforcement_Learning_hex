@@ -578,7 +578,23 @@ class HexBoard:
         self.canvas.create_line(bottom_border, fill='red', width=HexBoard.BORDER_WIDTH)
         self.canvas.create_line(left_border, fill='blue', width=HexBoard.BORDER_WIDTH)
         self.canvas.create_line(right_border, fill='blue', width=HexBoard.BORDER_WIDTH)
-
+        
+    def get_free_positions(self):
+        positions = []
+        for k in self.board.keys():
+            if self.board[k] == HexBoard.EMPTY:
+                positions.append(k)
+                
+        return positions
+        
+    def set_position(self, position, color):
+        """Place, ignore win checks and board checks"""
+        self.board[position] = color
+    
+    def set_position_auto(self, position):
+        """set_position with blue_to_move check"""
+        color = [HexBoard.RED, HexBoard.BLUE][self.blue_to_move]
+        self.set_position(position, color)
 
 def split_text(s):
     for k, g in groupby(s, str.isalpha):
