@@ -22,11 +22,11 @@ class TerminatorHex:
         # self.board = board
         self.max_depth = max_depth
         self.depth_weighting = depth_weighting
-        if (random_seed != 'random'):
+        if random_seed != 'random':
             self.random_seed = random_seed
         else:
             self.random_seed = random.random() * 10000
-        if (use_suggested_heuristic):
+        if use_suggested_heuristic:
             self.heuristic_evaluator = self.suggested_sum_scores
             self.depth_weighting = 0.5
         else:
@@ -230,9 +230,9 @@ def dijkstra_score_heuristic(hex_board, maximiser_color, max_score='inf'):
     opponent_color = [hex_board.BLUE, hex_board.RED][maximiser_color == hex_board.BLUE]
     my_dijkstra = board_dijkstra(hex_board, maximiser_color)
     your_dijkstra = board_dijkstra(hex_board, opponent_color)
-    if (your_dijkstra == 0): # losing move
+    if your_dijkstra == 0: # losing move
         return loss_return
-    if (my_dijkstra == 0): # winning move
+    if my_dijkstra == 0: # winning move
         return win_return
     return (your_dijkstra - my_dijkstra) # difference in advantage: maximise this quantity
 
@@ -298,10 +298,10 @@ def board_center_control(hex_board, maximiser_color):
     opponent_num_tiles = 0
     bs = hex_board.board_size
     for k in hex_board.board.keys():
-        if (hex_board.board[k] == maximiser_color): # my color
+        if hex_board.board[k] == maximiser_color: # my color
             maximiser_num_tiles =+ 1
             maximiser_centrality += (bs / 2) - max(abs((bs / 2) - k[0]), abs((bs / 2) - k[1])) # board centrality of that tile
-        elif (hex_board.board[k] != hex_board.EMPTY): # opponent color
+        elif hex_board.board[k] != hex_board.EMPTY: # opponent color
             opponent_num_tiles =+ 1
             opponent_centrality += (bs / 2) - max(abs((bs / 2) - k[0]), abs((bs / 2) - k[1]))
 
