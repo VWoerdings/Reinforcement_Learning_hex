@@ -1,7 +1,6 @@
 import copy
 import random
 
-
 class TerminatorHex:
     """A class that computes the the best move to make.
     Contains the following evaluator functions:
@@ -11,15 +10,27 @@ class TerminatorHex:
         terminator_move: Uses the alpha-beta algorithm and the chosen heuristic evaluator to compute the best move.
     """
 
-    def __init__(self, max_depth, heuristic_evaluator):
+    def __init__(self, max_depth, use_suggested_heuristic=True, heuristic_evaluator=None, depth_weighting=0, random_seed=100):
         """Initializes the Terminator AI for the HEX game.
         Args:
             max_depth: max search depth
             heuristic_evaluator: heuristic evaluation function (args hex_board, maximiser_color)
+            use_suggested_heuristic: use the suggested heuristic function
+            depth_weighting: see alpha_beta
+            random_seed: random seed for random component (if applicable); use 'random' for random
         """
         # self.board = board
         self.max_depth = max_depth
-        self.heuristic_evaluator = heuristic_evaluator
+        self.depth_weighting = depth_weighting
+        if (random_seed != 'random'):
+            self.random_seed = random_seed
+        else:
+            self.random_seed = random.random() * 10000
+        if (use_suggested_heuristic):
+            self.heuristic_evaluator = self.suggested_sum_scores
+            self.depth_weighting = 0.5
+        else:
+            self.heuristic_evaluator = heuristic_evaluator
 
     def terminator_move(self, board):
         """Returns the best move according to the chosen heuristic evaluation function an the min-max algorithm.
@@ -28,7 +39,10 @@ class TerminatorHex:
         Returns:
             (int, int): AI player move.
         """
-        return self.terminator_min_max(board, self.max_depth, 'max')
+        old_state = random.getstate() # state capture
+        move = self.terminator_min_max(board, self.max_depth, 'max') # get move
+        random.setstate(old_state) # state restore
+        return move
 
     def random_move(self, board):
         """Returns random, free move
@@ -72,23 +86,29 @@ class TerminatorHex:
                 deepened_board = copy.deepcopy(hex_board)
                 deepened_board.set_position_auto(move)
                 # new_value = minimax(deepened_board, depth - 1, 'min', self.heuristic_evaluator) # use for minimax
-                new_value = alpha_beta(deepened_board, depth - 1, 'min', alpha, beta, self.heuristic_evaluator)
+                new_value = alpha_beta(deepened_board, depth - 1, 'min', alpha, beta, self.heuristic_evaluator, depth_weighting=self.depth_weighting)
                 if (new_value > value):
                     value = new_value
                     best_move = move
             return best_move
-        elif (max_or_min == 'min'):  # minimise
+        elif max_or_min == 'min':  # minimise
             value = float('inf')
             best_move = moves[0]
             for move in moves:
                 deepened_board = copy.deepcopy(hex_board)
                 deepened_board.set_position_auto(move)
                 # new_value = minimax(deepened_board, depth - 1, 'max', self.heuristic_evaluator)
-                new_value = alpha_beta(deepened_board, depth - 1, 'max', alpha, beta, self.heuristic_evaluator)
+                new_value = alpha_beta(deepened_board, depth - 1, 'max', alpha, beta, self.heuristic_evaluator, depth_weighting=self.depth_weighting)
                 if (new_value < value):
                     value = new_value
                     best_move = move
             return best_move
+
+    def suggested_sum_scores(self, hex_board, maximiser_color):
+        val = dijkstra_score_heuristic(hex_board, maximiser_color, max_score=(hex_board.board_size * 10))
+        val += 0.3 * board_center_control(hex_board, maximiser_color)
+        val += 0.1 * random.random()
+        return val
 
 
 def minimax(hex_board, depth, max_or_min, evaluator):
@@ -132,7 +152,7 @@ def minimax(hex_board, depth, max_or_min, evaluator):
     return None
 
 
-def alpha_beta(hex_board, depth, max_or_min, alpha, beta, evaluator):
+def alpha_beta(hex_board, depth, max_or_min, alpha, beta, evaluator, depth_weighting=0):
     """The minimax algorithm on the HexBoard with alpha-beta-pruning
         Args:
             hex_board (HexBoard): The current hex board.
@@ -140,6 +160,8 @@ def alpha_beta(hex_board, depth, max_or_min, alpha, beta, evaluator):
             max_or_min (str): maximise or minimise the current color to play (hex_board.blue_to_move). Is either 'min' or 'max'.
             alpha, beta (int): initial alpha and beta bounds. Can be float('-inf') and float('inf')
             evaluator (function): evaluator function. Called with args hex_board, maximiser_color
+            depth-weighting (float): add heuristic score weight to the current evaluation depth. This can be used to
+                force immediate capitalisation on good moves
         Returns:
             int: maximised/minimised value according to the evaluator
     """
@@ -151,13 +173,13 @@ def alpha_beta(hex_board, depth, max_or_min, alpha, beta, evaluator):
 
     # minimax with alpha-beta pruning:
     if (depth <= 0 or is_game_over or len(moves) == 0):  # end state
-        return (evaluator(hex_board, maximiser_color))
+        return (evaluator(hex_board, maximiser_color) + (depth_weighting * depth))
     elif (max_or_min == 'max'):  # maximise
         value = float('-inf')
         for move in moves:
             deepened_board = copy.deepcopy(hex_board)
             deepened_board.set_position_auto(move)
-            new_value = alpha_beta(deepened_board, depth - 1, 'min', alpha, beta, evaluator)
+            new_value = alpha_beta(deepened_board, depth - 1, 'min', alpha, beta, evaluator, depth_weighting=depth_weighting)
             value = [value, new_value][new_value > value]
             alpha = [alpha, new_value][new_value > alpha]
             if (alpha >= beta):  # beta cutoff
@@ -168,7 +190,7 @@ def alpha_beta(hex_board, depth, max_or_min, alpha, beta, evaluator):
         for move in moves:
             deepened_board = copy.deepcopy(hex_board)
             deepened_board.set_position_auto(move)
-            new_value = alpha_beta(deepened_board, depth - 1, 'max', alpha, beta, evaluator)
+            new_value = alpha_beta(deepened_board, depth - 1, 'max', alpha, beta, evaluator, depth_weighting=depth_weighting)
             value = [value, new_value][new_value < value]
             beta = [beta, new_value][new_value < beta]
             if (alpha >= beta):  # alpha cutoff
@@ -191,28 +213,28 @@ def board_hash(hex_board, maximiser_color):
         board_list.append(hex_board.board[k])
     return hash(tuple(board_list))
 
-
-def dijkstra_score_heuristic(hex_board, maximiser_color):
+def dijkstra_score_heuristic(hex_board, maximiser_color, max_score='inf'):
     """Dijkstra Hex score heuristic
-    Args:
-        hex_board (HexBoard): the board to evaluate
-        maximiser_color (int): the color of the player to maximise
-    Returns:
-        int: the advantage of maximiser on the current board,
-        i.e. the difference in path length between your opponent and you
-        maximise this quanitity
-        always float('inf') for winning moves, and float('-inf') for losing moves
-    """
+        Args:
+            hex_board: the board to evaluate
+            maximiser_color: the color of the player to maximise
+            max_score: the maximum scores returned. Use 'inf' for float('inf') float('-inf') resp.,
+        Returns:
+            integer: the advantage of maximiser on the current board,
+            i.e. the difference in path length between your opponent and you
+            maximise this quanitity
+            always float('inf') for winning moves, and float('-inf') for losing moves"""
 
+    win_return = [max_score, float('inf')][max_score == 'inf']
+    loss_return = [-1 * max_score, float('-inf')][max_score == 'inf']
     opponent_color = [hex_board.BLUE, hex_board.RED][maximiser_color == hex_board.BLUE]
     my_dijkstra = board_dijkstra(hex_board, maximiser_color)
     your_dijkstra = board_dijkstra(hex_board, opponent_color)
-    if your_dijkstra == 0:  # losing move
-        return float('-inf')
-    if my_dijkstra == 0:  # winning move
-        return float('inf')
-    return your_dijkstra - my_dijkstra  # difference in advantage: maximise this quantity
-
+    if (your_dijkstra == 0): # losing move
+        return loss_return
+    if (my_dijkstra == 0): # winning move
+        return win_return
+    return (your_dijkstra - my_dijkstra) # difference in advantage: maximise this quantity
 
 def board_dijkstra(hex_board, maximiser_color):
     """Dijkstra's algorithm on the Hex board. Compute the shortest path length of edge-edge traversal
@@ -269,6 +291,23 @@ def board_dijkstra(hex_board, maximiser_color):
 
     return minimal_traverse_path_length
 
+def board_center_control(hex_board, maximiser_color):
+    maximiser_centrality = 0
+    maximiser_num_tiles = 0
+    opponent_centrality = 0
+    opponent_num_tiles = 0
+    bs = hex_board.board_size
+    for k in hex_board.board.keys():
+        if (hex_board.board[k] == maximiser_color): # my color
+            maximiser_num_tiles =+ 1
+            maximiser_centrality += (bs / 2) - max(abs((bs / 2) - k[0]), abs((bs / 2) - k[1])) # board centrality of that tile
+        elif (hex_board.board[k] != hex_board.EMPTY): # opponent color
+            opponent_num_tiles =+ 1
+            opponent_centrality += (bs / 2) - max(abs((bs / 2) - k[0]), abs((bs / 2) - k[1]))
+
+    maximiser_centrality /= (bs / 2) # normalise
+    opponent_centrality /= (bs / 2)
+    return ((maximiser_centrality - maximiser_num_tiles) - (opponent_centrality - opponent_num_tiles)) # difference in center control
 
 if __name__ == '__main__':
     import HexBoard as hb
@@ -281,3 +320,4 @@ if __name__ == '__main__':
     print(board_dijkstra(h, h.BLUE))
     h.set_position((3, 3), h.BLUE)
     print(board_dijkstra(h, h.BLUE))
+    print(board_center_control(h, h.BLUE))

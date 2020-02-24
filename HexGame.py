@@ -8,10 +8,10 @@ if __name__ == '__main__':
     enable_GUI = True
     enable_interactive_text = True
     board_size = 5
-    n_players = 1
+    n_players = 0
     ai_color = HexBoard.RED
 
-    terminator_AI = TerminatorHex.TerminatorHex(3, TerminatorHex.dijkstra_score_heuristic)
+    terminator_AI = TerminatorHex.TerminatorHex(3, True)
     board = HexBoard(board_size, n_players=n_players, enable_GUI=enable_GUI, interactive_text=enable_interactive_text,
                      ai_move=terminator_AI.terminator_move, ai_color=ai_color)
 
@@ -69,5 +69,4 @@ if __name__ == '__main__':
                     index_of_self = neighbors_neighbors.index((x, y))
                     assert (index_of_self != -1)
 
-
-main()
+# main() # replaced by __name__ == '__main__'
