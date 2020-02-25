@@ -50,10 +50,15 @@ class TerminatorHex:
             self.max_time = None
             self.do_transposition = False
 
-    def terminator_move(self, board):
+        self.last_seen_num_tiles = 0 # how many tiles were colored in the last-received board, i.e. determine number of moves we are 'behind'
+        if self.do_transposition:
+            self.transpostion_table = [{} for _ in range(self.max_depth)] # initialise a list of level-wise transpositions
+
+    def terminator_move(self, board, do_tile_increase=True):
         """Returns the best move according to the chosen heuristic evaluation function an the min-max algorithm.
         Args:
             board (HexBoard): The current hex board.
+            do_tile_increase (bool): Whether to increase self.last_seen_num_tiles after this move.
         Returns:
             (int, int): AI player move.
         """
@@ -63,7 +68,7 @@ class TerminatorHex:
             random.setstate(old_state) # state restore
         else:
             for depth in range(1, self.max_depth + 1):
-                start_time = time.time()
+                start_time = time.time() # move timing
                 old_state = random.getstate() # state capture
                 move = self.terminator_min_max(board, depth, 'max') # get move
                 random.setstate(old_state) # state restore
