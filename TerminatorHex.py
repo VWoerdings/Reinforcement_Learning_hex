@@ -12,7 +12,7 @@ class TerminatorHex:
     """
 
     def __init__(self, max_depth, use_suggested_heuristic=True, heuristic_evaluator=None, depth_weighting=0, random_seed=100,
-                 do_iterative_deepening=True, max_time=None):
+                 do_iterative_deepening=True, max_time=None, do_transposition=False):
         """Initializes the Terminator AI for the HEX game.
         Args:
             max_depth (int): max search depth
@@ -25,6 +25,8 @@ class TerminatorHex:
             max_time (float or None >> seconds): how much time we allow the algorithm to run for if iterative deepening is used.
                 note: value overriden if do_iterative_deepening is false. Will always return at least depth 1 search.
                 note: this is a soft bound. It will not cut execution while an iteration of max_depth is in progress.
+            do_transposition: whether to compute depthwise transposition tables and use these to improve alpha-beta move ordering
+                note: requires iterative deepening
         """
         # self.board = board
         self.max_depth = max_depth
@@ -42,9 +44,11 @@ class TerminatorHex:
         if do_iterative_deepening:
             self.do_iterative_deepening = True
             self.max_time = max_time
+            self.do_transposition = do_transposition
         else:
             self.do_iterative_deepening = False
             self.max_time = None
+            self.do_transposition = False
 
     def terminator_move(self, board):
         """Returns the best move according to the chosen heuristic evaluation function an the min-max algorithm.
@@ -135,19 +139,6 @@ class TerminatorHex:
         val += 0.1 * random.random()
         return val
 
-    def order_moves_TT(self, hex_board, max_or_min):
-        """Used with the transposition table algorithm. If we have a transposition table bound to self,
-                return a move list for the current board sorted by heuristic in the TT.
-                Relies on hex_board.blue_to_move for color determination.
-            Args:
-                hex_board (HexBoard): Hex board to evaluate
-                max_or_min ('min' or 'max'): Sort by minimum eval values or maximum respectively.
-            Returns:
-                list: Sorted list of moves
-        """
-        return
-
-
 def minimax(hex_board, depth, max_or_min, evaluator):
     """The minimax algorithm on the HexBoard
         Args:
@@ -187,7 +178,6 @@ def minimax(hex_board, depth, max_or_min, evaluator):
 
     print("@minimax: unknown max_or_min objective", max_or_min)
     return None
-
 
 def alpha_beta(hex_board, depth, max_or_min, alpha, beta, evaluator, depth_weighting=0):
     """The minimax algorithm on the HexBoard with alpha-beta-pruning
@@ -237,6 +227,29 @@ def alpha_beta(hex_board, depth, max_or_min, alpha, beta, evaluator, depth_weigh
     print("@alpha_beta: unknown max_or_min objective", max_or_min)
     return None
 
+def order_moves_TT(hex_board, max_or_min, transposition_table):
+    """Used with the transposition table algorithm. If we have a transposition table bound to self,
+            return a move list for the current board sorted by heuristic in the TT.
+            Relies on hex_board.blue_to_move for color determination.
+        Args:
+            hex_board (HexBoard): Hex board to evaluate
+            max_or_min ('min' or 'max'): Sort by minimum eval values or maximum respectively.
+            transposition_table: a dict-form transposition table
+        Returns:
+            list: Sorted list of moves
+    """
+    moves = [[move, 0] for move in hex_board.get_free_positions()] # [move, score]
+    for m in range(len(moves)):
+        move = moves[m][0]
+        deepened_board = copy.deepcopy(hex_board)
+        deepened_board.set_position_auto(move)
+        try:
+            moves[m][1] = transposition_table[board_as_hash_key(deepend_board)]
+        except KeyError:
+            print("@order_moves_TT: could not find deepened board in transposition table. Move order may now be incorrect")
+    sort_order = [False, True][max_or_min == 'max'] # so default = min
+    moves.sort(key = lambda val: val[1], reverse=sort_order)  # sort ascending or descending
+    return moves # handle from 0 to len as proper ordering
 
 def board_hash(hex_board, maximiser_color):
     """Hash the board, for deterministic random AI position evaluator.
