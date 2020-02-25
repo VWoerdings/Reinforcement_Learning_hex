@@ -1,5 +1,6 @@
 import copy
 import random
+import time
 
 class TerminatorHex:
     """A class that computes the the best move to make.
@@ -10,14 +11,20 @@ class TerminatorHex:
         terminator_move: Uses the alpha-beta algorithm and the chosen heuristic evaluator to compute the best move.
     """
 
-    def __init__(self, max_depth, use_suggested_heuristic=True, heuristic_evaluator=None, depth_weighting=0, random_seed=100):
+    def __init__(self, max_depth, use_suggested_heuristic=True, heuristic_evaluator=None, depth_weighting=0, random_seed=100,
+                 do_iterative_deepening=True, max_time=None):
         """Initializes the Terminator AI for the HEX game.
         Args:
-            max_depth: max search depth
-            heuristic_evaluator: heuristic evaluation function (args hex_board, maximiser_color)
-            use_suggested_heuristic: use the suggested heuristic function
-            depth_weighting: see alpha_beta
-            random_seed: random seed for random component (if applicable); use 'random' for random
+            max_depth (int): max search depth
+            heuristic_evaluator (function): heuristic evaluation function (args hex_board, maximiser_color)
+            use_suggested_heuristic (bool): use the suggested heuristic function self.suggested_sum_scores
+                note: overrides depth weighting
+            depth_weighting (float): see alpha_beta
+            random_seed (int): random seed for random component (if applicable); use 'random' for random
+            do_iterative_deepening (bool): whether to perform iterative deepening
+            max_time (float or None >> seconds): how much time we allow the algorithm to run for if iterative deepening is used.
+                note: value overriden if do_iterative_deepening is false. Will always return at least depth 1 search.
+                note: this is a soft bound. It will not cut execution while an iteration of max_depth is in progress.
         """
         # self.board = board
         self.max_depth = max_depth
@@ -25,12 +32,19 @@ class TerminatorHex:
         if random_seed != 'random':
             self.random_seed = random_seed
         else:
-            self.random_seed = random.random() * 10000
+            self.random_seed = int(random.random() * 10000)
         if use_suggested_heuristic:
             self.heuristic_evaluator = self.suggested_sum_scores
             self.depth_weighting = 0.5
         else:
             self.heuristic_evaluator = heuristic_evaluator
+
+        if do_iterative_deepening:
+            self.do_iterative_deepening = True
+            self.max_time = max_time
+        else:
+            self.do_iterative_deepening = False
+            self.max_time = None
 
     def terminator_move(self, board):
         """Returns the best move according to the chosen heuristic evaluation function an the min-max algorithm.
@@ -39,9 +53,20 @@ class TerminatorHex:
         Returns:
             (int, int): AI player move.
         """
-        old_state = random.getstate() # state capture
-        move = self.terminator_min_max(board, self.max_depth, 'max') # get move
-        random.setstate(old_state) # state restore
+        if not self.do_iterative_deepening:
+            old_state = random.getstate() # state capture
+            move = self.terminator_min_max(board, self.max_depth, 'max') # get move
+            random.setstate(old_state) # state restore
+        else:
+            for depth in range(1, self.max_depth + 1):
+                start_time = time.time()
+                old_state = random.getstate() # state capture
+                move = self.terminator_min_max(board, depth, 'max') # get move
+                random.setstate(old_state) # state restore
+                end_time = time.time()
+                if self.max_time != None:
+                    if (end_time - start_time) > self.max_time:
+                        break # break upon time exceed
         return move
 
     def random_move(self, board):
@@ -109,6 +134,18 @@ class TerminatorHex:
         val += 0.3 * board_center_control(hex_board, maximiser_color)
         val += 0.1 * random.random()
         return val
+
+    def order_moves_TT(self, hex_board, max_or_min):
+        """Used with the transposition table algorithm. If we have a transposition table bound to self,
+                return a move list for the current board sorted by heuristic in the TT.
+                Relies on hex_board.blue_to_move for color determination.
+            Args:
+                hex_board (HexBoard): Hex board to evaluate
+                max_or_min ('min' or 'max'): Sort by minimum eval values or maximum respectively.
+            Returns:
+                list: Sorted list of moves
+        """
+        return
 
 
 def minimax(hex_board, depth, max_or_min, evaluator):
@@ -202,9 +239,10 @@ def alpha_beta(hex_board, depth, max_or_min, alpha, beta, evaluator, depth_weigh
 
 
 def board_hash(hex_board, maximiser_color):
-    """Hash the board, for deterministic random AI position evaluator
+    """Hash the board, for deterministic random AI position evaluator.
     Args:
         hex_board (HexBoard): The current hex board.
+        maximiser_color (HexBoard color): Provided by TerminatorHex, unused in this function.
     Returns:
         int: Hash value for the current board.
     """
@@ -212,6 +250,18 @@ def board_hash(hex_board, maximiser_color):
     for k in hex_board.board.keys():
         board_list.append(hex_board.board[k])
     return hash(tuple(board_list))
+
+def board_as_hash_key(hex_board):
+    """Same as board_hash, but does not return hash value, only tuple key.
+    Args:
+        hex_board (HexBoard): The board to hash.
+    Returns:
+        tuple: Hashable unique representation of the board.
+    """
+    board_list = []
+    for k in hex_board.board.keys():
+        board_list.append(hex_board.board[k])
+    return tuple(board_list)
 
 def dijkstra_score_heuristic(hex_board, maximiser_color, max_score='inf'):
     """Dijkstra Hex score heuristic
