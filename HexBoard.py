@@ -32,7 +32,7 @@ class HexBoard:
     PATTERN = '[a-zA-Z][0-9]'
 
     def __init__(self, board_size, n_players=2, enable_GUI=False, interactive_text=False, ai_move=None,
-                 ai_color=None):
+                 ai_color=None, blue_ai_move=None, red_ai_move=None):
         """Initializes the board and GUI if applicable.
         Args:
             board_size (int): Size of the hexagon grid.
@@ -40,6 +40,7 @@ class HexBoard:
             enable_GUI (bool, optional): Enables an interactive GUI. Default is False.
             interactive_text (bool, optional): Enables an interactive text mode. Sets enable_GUI to False. Default is False. Maximum board size for this mode is currently 10.
             ai_move (function): Function that generates a the moves for the AI.
+            blue_ai_move, red_ai_move (function): Functions that generates a the moves for the blue and red AI, respectively. One of these arguments is required when both players are ai.
             ai_color (int): Only applicable when n_players is 1. Determines which player is controlled by ai. Default is Hexboard.RED.
         """
         self.board = {}
@@ -66,7 +67,19 @@ class HexBoard:
             self.n_players = None
             self.ai_move = None
             raise SystemExit('Wrong number of players %d:' % n_players)
-        if n_players == 2:
+
+        if n_players == 0:
+            if blue_ai_move is None and red_ai_move is None:
+                raise SystemExit('Error with blue/red ai move.')
+            elif blue_ai_move is None:
+                self.blue_ai_move = red_ai_move
+                self.red_ai_move = red_ai_move
+            elif red_ai_move is None:
+                self.blue_ai_move = blue_ai_move
+                self.red_ai_move = blue_ai_move
+            else:
+                self.blue_ai_move = blue_ai_move
+                self.red_ai_move = red_ai_move
             self.enable_GUI = False
             print("GUI disabled: no players.")
 
@@ -88,18 +101,38 @@ class HexBoard:
 
             self.canvas.bind("<Button-1>", self.on_click)
             if self.ai_to_move():
-                x, y = self.ai_move(self)
+                if self.n_players == 0:
+                    if self.blue_to_move:
+                        x, y = self.blue_ai_move(self)
+                    else:
+                        x, y = self.red_ai_move(self)
+                else:
+                    x, y = self.ai_move(self)
                 self.place((x, y))
 
             self.create_GUI()
             self.window.mainloop()
+
+    def get_winning_color(self):
+        if self.check_win(HexBoard.RED):
+            return HexBoard.RED
+        elif self.check_win(HexBoard.BLUE):
+            return HexBoard.BLUE
+        else:
+            return None
 
     def interactive_text_loop(self):
         """Contains an infinite loop that reads and handles commands from the console."""
         self.quit = False
         self.print_command_help()
         if self.ai_to_move():
-            x, y = self.ai_move(self)
+            if self.n_players == 0:
+                if self.blue_to_move:
+                    x, y = self.blue_ai_move(self)
+                else:
+                    x, y = self.red_ai_move(self)
+            else:
+                x, y = self.ai_move(self)
             self.place((x, y))
             self.print_board()
 
@@ -244,7 +277,13 @@ class HexBoard:
         if self.interactive_text:
             self.print_board()
         if self.ai_to_move():
-            x, y = self.ai_move(self)
+            if self.n_players == 0:
+                if self.blue_to_move:
+                    x, y = self.blue_ai_move(self)
+                else:
+                    x, y = self.red_ai_move(self)
+            else:
+                x, y = self.ai_move(self)
             self.place((x, y))
 
     def ai_to_move(self):
