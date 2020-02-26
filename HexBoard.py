@@ -121,16 +121,6 @@ class HexBoard:
             self.hexagon_list = []
             self.hexagon_id = {}  # Keys are gird coordinates, values are hexagon ids
 
-            if self.ai_to_move():
-                if self.n_players == 0:
-                    if self.blue_to_move:
-                        x, y = self.blue_ai_move(self)
-                    else:
-                        x, y = self.red_ai_move(self)
-                else:
-                    x, y = self.ai_move(self)
-                self.place((x, y))
-
             self.create_gui()
             self.window.mainloop()
 
@@ -316,7 +306,8 @@ class HexBoard:
                     self.canvas.itemconfig(hexagon_id, fill="blue")
                 else:
                     self.canvas.itemconfig(hexagon_id, fill="red")
-        if self.ai_to_move():
+        if self.ai_to_move() and \
+                not color == HexBoard.EMPTY: # Do not make an IA move when undoing
             if self.n_players == 0:
                 if self.blue_to_move:
                     x, y = self.blue_ai_move(self)
@@ -527,7 +518,7 @@ class HexBoard:
                 if self.canvas.type(item) == 'polygon':
                     self.canvas.itemconfig(item, fill="white")
 
-    def undo_move(self, again=False):
+    def undo_move(self, again=True):
         """Undoes the last made move"""
         if len(self.move_list) == 0:
             if self.interactive_text:
@@ -645,6 +636,16 @@ class HexBoard:
                     right_border.append(hexagon.point_list[3])
                     right_border.append(hexagon.point_list[4])
                     right_border.append(hexagon.point_list[5])
+
+        if self.ai_to_move():
+            if self.n_players == 0:
+                if self.blue_to_move:
+                    x, y = self.blue_ai_move(self)
+                else:
+                    x, y = self.red_ai_move(self)
+            else:
+                x, y = self.ai_move(self)
+            self.place((x, y))
 
         self.canvas.create_line(top_border, fill='red', width=HexBoard.BORDER_WIDTH)
         self.canvas.create_line(bottom_border, fill='red', width=HexBoard.BORDER_WIDTH)
