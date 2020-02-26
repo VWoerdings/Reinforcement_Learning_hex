@@ -66,20 +66,23 @@ if __name__ == '__main__':
     dijkstra3_sigma = [dijkstra3_rating.sigma]
     dijkstra4_sigma = [dijkstra4_rating.sigma]
 
-    max_rounds = 20
+    max_rounds = 5
     round_number = 0
     while round_number < max_rounds:
         print("Currently playing round number %d of %d" % (round_number + 1, max_rounds))
 
         # Random vs dijkstra3
+        print("Playing", random_player_desc, "vs", dijkstra3_desc)
         random_player_rating, dijkstra3_rating = play_1v1(random_player_move, random_player_rating,
                                                           dijkstra3_move, dijkstra3_rating, round_number)
 
         # Dijkstra3 vs dijkstra4
+        print("Playing", dijkstra3_desc, "vs", dijkstra4_desc)
         dijkstra3_rating, dijkstra4_rating = play_1v1(dijkstra3_move, dijkstra3_rating,
                                                       dijkstra4_move, dijkstra4_rating, round_number)
 
         # Random vs dijkstra4
+        print("Playing", random_player_desc, "vs", dijkstra4_desc)
         random_player_rating, dijkstra4_rating = play_1v1(random_player_move, random_player_rating,
                                                           dijkstra4_move, dijkstra4_rating, round_number)
 
@@ -106,7 +109,7 @@ if __name__ == '__main__':
     plt.errorbar(range(max_rounds + 1), random_player_mu, yerr=random_half_sigma, label=random_player_desc, fmt='o')
     plt.errorbar(range(max_rounds + 1), dijkstra3_mu, yerr=dijkstra3_half_sigma, label=dijkstra3_desc, fmt='o')
     plt.errorbar(range(max_rounds + 1), dijkstra4_mu, yerr=dijkstra4_half_sigma, label=dijkstra4_desc, fmt='o')
-    plt.xlabel("Game number")
+    plt.xlabel("Round number")
     plt.ylabel("Rating")
     plt.ylim((0, 50))
     plt.legend()

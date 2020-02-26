@@ -4,6 +4,7 @@ from itertools import groupby
 from math import cos, tan, pi
 from tkinter import messagebox
 from typing import Callable
+from copy import deepcopy
 
 from RegularPolygon import RegularPolygon
 
@@ -100,8 +101,9 @@ class HexBoard:
                 else:
                     x, y = self.ai_move(self)
                 self.place((x, y))
-        elif not self.enable_GUI:
-            raise SystemExit('No interface was activated')
+        # elif not self.enable_GUI:
+            # raise SystemExit('No interface was activated')
+
 
         if self.enable_GUI:
             self.WIN_WIDTH = 2 * HexBoard.X_PADDING + (self.board_size - 1) * 1.5 * HexBoard.HEX_SIZE
@@ -115,6 +117,10 @@ class HexBoard:
             self.canvas.pack()
 
             self.canvas.bind("<Button-1>", self.on_click)
+
+            self.hexagon_list = []
+            self.hexagon_id = {}  # Keys are gird coordinates, values are hexagon ids
+
             if self.ai_to_move():
                 if self.n_players == 0:
                     if self.blue_to_move:
@@ -127,6 +133,17 @@ class HexBoard:
 
             self.create_gui()
             self.window.mainloop()
+
+    def __deepcopy__(self, memodict={}):
+        copy = HexBoard(deepcopy(self.board_size, memodict), enable_gui=False)
+        # cls = self.__class__
+        # result = cls.__new__(cls)
+        # memodict[id(self)] = result
+        # for key, value in self.__dict__.items():
+        #     if not isinstance(value, tk.Tk) or
+        #         not isinstance(value, ):
+        #         setattr(result, key, deepcopy(value, memodict))
+        return copy
 
     def get_winning_color(self):
         if self.check_win(HexBoard.RED):
@@ -292,6 +309,13 @@ class HexBoard:
             # Do not exit the game to allow undoing.
         if self.interactive_text:
             self.print_board()
+        if self.enable_GUI:
+            hexagon_id = self.hexagon_id[coordinates]
+            if self.canvas.itemcget(hexagon_id, 'fill') == 'white':
+                if color == HexBoard.BLUE:
+                    self.canvas.itemconfig(hexagon_id, fill="blue")
+                else:
+                    self.canvas.itemconfig(hexagon_id, fill="red")
         if self.ai_to_move():
             if self.n_players == 0:
                 if self.blue_to_move:
@@ -503,7 +527,7 @@ class HexBoard:
                 if self.canvas.type(item) == 'polygon':
                     self.canvas.itemconfig(item, fill="white")
 
-    def undo_move(self):
+    def undo_move(self, again=False):
         """Undoes the last made move"""
         if len(self.move_list) == 0:
             if self.interactive_text:
@@ -528,6 +552,9 @@ class HexBoard:
             for item in test:
                 if self.canvas.type(item) == 'polygon':
                     self.canvas.itemconfig(item, fill="white")
+
+        if self.n_players == 1 and again:
+            self.undo_move(again=False)
 
     @staticmethod
     def hex_to_coord(coordinates):
@@ -586,8 +613,11 @@ class HexBoard:
                 xi = HexBoard.X_PADDING + yi * HexBoard.HEX_SIZE / 2 + i * HexBoard.HEX_SIZE
                 y = HexBoard.Y_PADDING + yi * ((HexBoard.CROSS_LENGTH + HexBoard.SIDE_LENGTH) / 2)
                 hexagon = RegularPolygon(6, HexBoard.HEX_SIZE, xi, y)
-                self.canvas.create_polygon(hexagon.point_list, fill="white", outline="black")
+                hexagon_id = self.canvas.create_polygon(hexagon.point_list, fill="white", outline="black")
+                self.hexagon_list.append(hexagon_id)
                 self.canvas.create_text(xi, y, text='' + str(chr(i + 97)) + str(yi))
+
+                self.hexagon_id[(i, yi)] = hexagon_id
 
                 if yi == 0:
                     top_border.append(hexagon.point_list[-2])
