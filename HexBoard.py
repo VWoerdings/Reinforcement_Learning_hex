@@ -85,7 +85,6 @@ class HexBoard:
                 self.blue_ai_move = blue_ai_move
                 self.red_ai_move = red_ai_move
             self.enable_GUI = False
-            print("GUI disabled: no players.")
 
         if self.interactive_text:
             self.quit = False
