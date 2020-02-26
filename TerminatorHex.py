@@ -53,7 +53,7 @@ class TerminatorHex:
         self.last_seen_num_tiles = 0 # how many tiles were colored in the last-received board, i.e. determine number of moves we are 'behind'
         self.transposition_table = None
         if self.do_transposition:
-            self.transposition_table = [{} for _ in range(self.max_depth)] # initialise a list of level-wise transpositions
+            self.transposition_table = [{} for _ in range(self.max_depth + 1)] # initialise a list of level-wise transpositions
 
     def terminator_move(self, board, do_tile_increase=True):
         """Returns the best move according to the chosen heuristic evaluation function an the min-max algorithm.
@@ -67,7 +67,20 @@ class TerminatorHex:
             old_state = random.getstate() # state capture
             move = self.terminator_min_max(board, self.max_depth, 'max') # get move
             random.setstate(old_state) # state restore
+            if do_tile_increase: # tile counting
+                num_tiles_now = 0
+                for k in board.board.keys():
+                    if board.board[k] != board.EMPTY:
+                        num_tiles_now += 1
         else:
+            # tranposition culling: cull unneeded levels from the table
+            num_tiles_now = 0
+            for k in board.board.keys():
+                if board.board[k] != board.EMPTY:
+                    num_tiles_now += 1
+            if self.do_transposition:
+                self.cull_transposition_table(num_tiles_now - self.last_seen_num_tiles)
+            
             for depth in range(1, self.max_depth + 1):
                 start_time = time.time() # move timing
                 old_state = random.getstate() # state capture
@@ -77,6 +90,9 @@ class TerminatorHex:
                 if self.max_time != None:
                     if (end_time - start_time) > self.max_time:
                         break # break upon time exceed
+
+        if do_tile_increase:
+                self.last_seen_num_tiles = num_tiles_now + 1
         return move
 
     def random_move(self, board):
@@ -162,9 +178,9 @@ class TerminatorHex:
             print("@TerminatorHex.cull_transposition_table: cull called, but we're not in transposition mode")
             return
         
-        num_real = max(0, min(self.max_depth, num))
+        num_real = max(0, min(self.max_depth + 1, num))
         for i in range(num_real):
-            self.transposition_table.pop(self.max_depth - 1) # reset level dict at top level
+            self.transposition_table.pop(self.max_depth) # reset level dict at top level
             self.transposition_table.insert(0, {}) # append empty level table
             # note: optimise to deque
             
@@ -229,10 +245,13 @@ def alpha_beta(hex_board, depth, max_or_min, alpha, beta, evaluator, depth_weigh
         is_game_over = True
     
     use_transposition = [False, True][transposition_table != None]
-    if use_transposition:
-        moves = order_moves_TT(hex_board, max_or_min, transposition_table[depth])
+    if depth > 0:
+        if use_transposition:
+            moves = order_moves_TT(hex_board, max_or_min, transposition_table[depth])
+        else:
+            moves = hex_board.get_free_positions()
     else:
-        moves = hex_board.get_free_positions()
+        moves = None # don't need to compute this, save time
 
     # minimax with alpha-beta pruning:
     if (depth <= 0 or is_game_over or len(moves) == 0):  # end state
@@ -292,7 +311,8 @@ def order_moves_TT(hex_board, max_or_min, transposition_table, return_key_values
         try:
             moves[m][1] = transposition_table[board_as_hash_key(deepened_board)]
         except KeyError:
-            print("@order_moves_TT: could not find deepened board in transposition table. Move order may now be incorrect")
+            #print("@order_moves_TT: could not find deepened board in transposition table. Move order may now be incorrect") # actually, this is expected behaviour
+            moves[m][1] = [float('inf'), float('-inf')][max_or_min == 'max'] # instead, append it to the end of the moves list, do the known moves first
     sort_order = [False, True][max_or_min == 'max'] # so default = min
     moves.sort(key = lambda val: val[1], reverse=sort_order)  # sort ascending or descending
     if return_key_values:
@@ -372,8 +392,7 @@ def board_dijkstra(hex_board, maximiser_color):
     minimal_traverse_path_length = float('inf')
     for e in edge_positions:
         distances = {key: float('inf') for key in hex_board.board.keys()}  # initiate distances
-        if (hex_board.board[
-            e] != opponent_color):  # continuing if this is true is useless because opponent has captured this edge tile
+        if (hex_board.board[e] != opponent_color):  # continuing if this is true is useless because opponent has captured this edge tile
             unvisited = [k for k in hex_board.board.keys()]  # prevent node revisiting
             distances[e] = [0, 1][hex_board.board[
                                       e] == hex_board.EMPTY]  # if it is empty, set cost to 1 because we still need to fill that tile
