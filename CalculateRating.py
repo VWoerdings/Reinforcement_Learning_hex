@@ -10,12 +10,11 @@ evolution of their ratings.
 """
 
 
-def play_1v1(player1_move, player1_rating, player2_move, player2_rating, round_number):
-    enable_interactive_text = True  # Todo: Needs to be true, but why?
+def play_1v1(player1_move, player1_rating, player2_move, player2_rating, cur_round):
     board_size = 4
 
     # Randomly select color
-    if round_number % 2 == 0:
+    if cur_round % 2 == 0:
         player1_color = HexBoard.BLUE
         player2_color = HexBoard.RED
         blue_ai_move = player1_move
@@ -27,7 +26,7 @@ def play_1v1(player1_move, player1_rating, player2_move, player2_rating, round_n
         red_ai_move = player1_move
 
     board = HexBoard(board_size, n_players=0, enable_gui=False,
-                     interactive_text=enable_interactive_text, ai_move=None, blue_ai_move=blue_ai_move,
+                     interactive_text=False, ai_move=None, blue_ai_move=blue_ai_move,
                      red_ai_move=red_ai_move, ai_color=None)
 
     winning_color = board.get_winning_color()

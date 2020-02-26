@@ -91,6 +91,18 @@ class HexBoard:
             self.quit = False
             self.enable_GUI = False
             self.interactive_text_loop()
+        elif n_players == 0:
+            if self.ai_to_move():
+                if self.n_players == 0:
+                    if self.blue_to_move:
+                        x, y = self.blue_ai_move(self)
+                    else:
+                        x, y = self.red_ai_move(self)
+                else:
+                    x, y = self.ai_move(self)
+                self.place((x, y))
+        elif not self.enable_GUI:
+            raise SystemExit('No interface was activated')
 
         if self.enable_GUI:
             self.WIN_WIDTH = 2 * HexBoard.X_PADDING + (self.board_size - 1) * 1.5 * HexBoard.HEX_SIZE
