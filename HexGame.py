@@ -13,7 +13,7 @@ if __name__ == '__main__':
 
     terminator_AI = TerminatorHex.TerminatorHex(3, True)
     board = HexBoard(board_size, n_players=n_players, enable_gui=enable_GUI, interactive_text=enable_interactive_text,
-                     ai_move=terminator_AI.terminator_move, ai_color=ai_color)
+                     ai_move=terminator_AI.terminator_move, ai_color=ai_color, blue_ai_move=terminator_AI.terminator_move, red_ai_move=terminator_AI.terminator_move)
 
     if not enable_GUI and not enable_interactive_text:
 
