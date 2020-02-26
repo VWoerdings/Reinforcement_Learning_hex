@@ -66,7 +66,7 @@ if __name__ == '__main__':
     dijkstra3_sigma = [dijkstra3_rating.sigma]
     dijkstra4_sigma = [dijkstra4_rating.sigma]
 
-    max_rounds = 5
+    max_rounds = 20
     round_number = 0
     while round_number < max_rounds:
         print("Currently playing round number %d of %d" % (round_number + 1, max_rounds))
@@ -90,6 +90,8 @@ if __name__ == '__main__':
         dijkstra4_mu.append(dijkstra4_rating.mu)
         dijkstra4_sigma.append(dijkstra4_rating.sigma)
 
+        round_number += 1
+
     print("Final ratings are:")
     print(random_player_desc, ": ", random_player_rating, sep="")
     print(dijkstra3_desc, ": ", dijkstra3_rating, sep="")
@@ -101,9 +103,9 @@ if __name__ == '__main__':
     dijkstra4_half_sigma = np.array(dijkstra4_sigma) / 2
 
     plt.figure()
-    plt.errorbar(range(max_games + 1), random_player_mu, yerr=random_half_sigma, label=random_player_desc, fmt='o')
-    plt.errorbar(range(max_games + 1), dijkstra3_mu, yerr=dijkstra3_mu, label=dijkstra3_desc, fmt='o')
-    plt.errorbar(range(max_games + 1), dijkstra4_mu, yerr=dijkstra4_mu, label=dijkstra4_desc, fmt='o')
+    plt.errorbar(range(max_rounds + 1), random_player_mu, yerr=random_half_sigma, label=random_player_desc, fmt='o')
+    plt.errorbar(range(max_rounds + 1), dijkstra3_mu, yerr=dijkstra3_half_sigma, label=dijkstra3_desc, fmt='o')
+    plt.errorbar(range(max_rounds + 1), dijkstra4_mu, yerr=dijkstra4_half_sigma, label=dijkstra4_desc, fmt='o')
     plt.xlabel("Game number")
     plt.ylabel("Rating")
     plt.ylim((0, 50))
