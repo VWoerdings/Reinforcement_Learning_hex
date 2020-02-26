@@ -5,7 +5,8 @@ import trueskill as ts
 import TerminatorHex
 from HexBoard import HexBoard
 
-"""This script calculates the rating of two Hex algorithms by playing them against each other.
+"""This script calculates the rating of two Hex algorithms by playing them against each other and visualizes the 
+evolution of the ratings.
 """
 
 if __name__ == '__main__':
@@ -49,7 +50,7 @@ if __name__ == '__main__':
             blue_ai_move = player2_move
             red_ai_move = player1_move
 
-        board = HexBoard(board_size, n_players=n_players, enable_GUI=enable_GUI,
+        board = HexBoard(board_size, n_players=n_players, enable_gui=enable_GUI,
                          interactive_text=enable_interactive_text, ai_move=None, blue_ai_move=blue_ai_move,
                          red_ai_move=red_ai_move, ai_color=None)
 
@@ -59,6 +60,8 @@ if __name__ == '__main__':
         elif winning_color == player2_color:
             new_player2_rating, new_player1_rating = ts.rate_1vs1(player2_rating, player1_rating)
         else:
+            new_player1_rating = None
+            new_player2_rating = None
             print("Rating error")
 
         player1_rating = new_player1_rating

@@ -3,6 +3,7 @@ import tkinter as tk
 from itertools import groupby
 from math import cos, tan, pi
 from tkinter import messagebox
+from typing import Callable
 
 from RegularPolygon import RegularPolygon
 
@@ -31,17 +32,20 @@ class HexBoard:
     # Pattern match
     PATTERN = '[a-zA-Z][0-9]'
 
-    def __init__(self, board_size, n_players=2, enable_GUI=False, interactive_text=False, ai_move=None,
-                 ai_color=None, blue_ai_move=None, red_ai_move=None):
+    def __init__(self, board_size, n_players=2, enable_gui=False, interactive_text=False, ai_move: Callable = None,
+                 ai_color: int = None, blue_ai_move: Callable = None, red_ai_move: Callable = None):
         """Initializes the board and GUI if applicable.
         Args:
             board_size (int): Size of the hexagon grid.
             n_players (int): Number of controllable players. Can be 0, 1 or 2.
-            enable_GUI (bool, optional): Enables an interactive GUI. Default is False.
-            interactive_text (bool, optional): Enables an interactive text mode. Sets enable_GUI to False. Default is False. Maximum board size for this mode is currently 10.
-            ai_move (function): Function that generates a the moves for the AI.
-            blue_ai_move, red_ai_move (function): Functions that generates a the moves for the blue and red AI, respectively. One of these arguments is required when both players are ai.
-            ai_color (int): Only applicable when n_players is 1. Determines which player is controlled by ai. Default is Hexboard.RED.
+            enable_gui (bool, optional): Enables an interactive GUI. Default is False.
+            interactive_text (bool, optional): Enables an interactive text mode. Sets enable_GUI to False. Default is
+                False. Maximum board size for this mode is currently 10.
+            ai_move (Callable): Function that generates a the moves for the AI.
+            blue_ai_move, red_ai_move (Callable): Functions that generates a the moves for the blue and red AI,
+                respectively. One of these arguments is required when both players are ai.
+            ai_color (int): Only applicable when n_players is 1. Determines which player is controlled by ai. Default is
+                Hexboard.RED.
         """
         self.board = {}
         self.board_size = board_size
@@ -53,7 +57,7 @@ class HexBoard:
         self.game_over = False
         self.blue_to_move = True  # Blue is the first player
 
-        self.enable_GUI = enable_GUI
+        self.enable_GUI = enable_gui
         self.interactive_text = interactive_text
 
         if n_players in [0, 1, 2]:
@@ -110,7 +114,7 @@ class HexBoard:
                     x, y = self.ai_move(self)
                 self.place((x, y))
 
-            self.create_GUI()
+            self.create_gui()
             self.window.mainloop()
 
     def get_winning_color(self):
@@ -254,7 +258,8 @@ class HexBoard:
         self.place_with_color(coordinates, color)
 
     def place_with_color(self, coordinates, color):
-        """Places a given color at given coordinates. Then, if applicable, makes an ai move. Also prints the board if in interactive text mode.
+        """Places a given color at given coordinates. Then, if applicable, makes an ai move. Also prints the board if in
+            interactive text mode.
         Args:
             coordinates (int, int): X and y coordinates to check.
             color (int): Color to place.
@@ -441,7 +446,7 @@ class HexBoard:
             # Do not print if there are not players
             print("It is currently " + turn_player + "\'s turn.")
 
-    def create_GUI(self):
+    def create_gui(self):
         """Binds buttons to the open window and calls Hexboard.draw_grid()
         """
         reset_button = tk.Button(self.window, text="Reset", command=self.reset_board)
