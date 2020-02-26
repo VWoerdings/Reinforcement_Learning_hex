@@ -499,8 +499,6 @@ class HexBoard:
                     else:
                         self.canvas.itemconfig(tk.CURRENT, fill="red")
                         self.place_with_color((x, y), HexBoard.RED)
-                    # print("You clicked on " + self.hex_to_string(self.canvas.coords(tk.CURRENT)))
-                    # Todo: update canvas after ai moves (maybe with move_list)
 
     def reset_board(self):
         """Resets board and GUI"""
@@ -594,7 +592,6 @@ class HexBoard:
 
     def draw_grid(self):
         """Draws a grid of hexagons"""
-        # Todo: use move_list to draw initial hexagon if ai is the first player.
         top_border = []
         bottom_border = []
         left_border = []
