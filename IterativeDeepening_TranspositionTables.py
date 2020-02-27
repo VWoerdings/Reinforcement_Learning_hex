@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import trueskill as ts
+import time
 
 import TerminatorHex
 from HexBoard import HexBoard

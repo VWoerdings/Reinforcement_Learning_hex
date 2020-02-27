@@ -24,7 +24,7 @@ def play_1v1(player1_move, player1_rating, player2_move, player2_rating, cur_rou
         player2_rating (ts.Rating): Current rating for player 2
         cur_round (int): Current iteration number. Used to determine player colors.
     """
-    board_size = 5
+    board_size = 4
 
     # Select color
     if cur_round % 2 == 0:
