@@ -11,9 +11,17 @@ evolution of their ratings.
 
 
 def play_1v1(player1_move, player1_rating, player2_move, player2_rating, cur_round):
+    """Plays two AI algorithms against each other and updates their ratings.
+    Args:
+        player1_move (function): Move generator for player 1
+        player1_rating (ts.Rating): Current rating for player 1
+        player2_move (function): Move generator for player 2
+        player2_rating (ts.Rating): Current rating for player 2
+        cur_round (int): Current iteration number. Used to determine player colors.
+    """
     board_size = 4
 
-    # Randomly select color
+    # Select color
     if cur_round % 2 == 0:
         player1_color = HexBoard.BLUE
         player2_color = HexBoard.RED
@@ -28,8 +36,9 @@ def play_1v1(player1_move, player1_rating, player2_move, player2_rating, cur_rou
     board = HexBoard(board_size, n_players=0, enable_gui=False,
                      interactive_text=False, ai_color=None, ai_move=None, blue_ai_move=blue_ai_move,
                      red_ai_move=red_ai_move, move_list=[])
-
     winning_color = board.get_winning_color()
+
+    # Update ratings
     if winning_color == player1_color:
         new_player1_rating, new_player2_rating = ts.rate_1vs1(player1_rating, player2_rating)
     elif winning_color == player2_color:
@@ -43,13 +52,16 @@ def play_1v1(player1_move, player1_rating, player2_move, player2_rating, cur_rou
 
 
 if __name__ == '__main__':
+    # Initialize AI
     terminator_depth_3 = TerminatorHex.TerminatorHex(3, do_transposition=False)
     terminator_depth_4 = TerminatorHex.TerminatorHex(4, do_transposition=False)
 
+    # Assign move generators
     random_player_move = terminator_depth_3.random_move
     dijkstra3_move = terminator_depth_3.terminator_move
     dijkstra4_move = terminator_depth_4.terminator_move
 
+    # Initialize ratings
     random_player_rating = ts.Rating()
     dijkstra3_rating = ts.Rating()
     dijkstra4_rating = ts.Rating()
@@ -58,18 +70,19 @@ if __name__ == '__main__':
     dijkstra3_desc = "Search depth 3 with Dijkstra evaluation"
     dijkstra4_desc = "Search depth 4 with Dijkstra evaluation"
 
+    # Initialize lists to keep track of rating history
     random_player_mu = [random_player_rating.mu]
     dijkstra3_mu = [dijkstra3_rating.mu]
     dijkstra4_mu = [dijkstra4_rating.mu]
-
     random_player_sigma = [random_player_rating.sigma]
     dijkstra3_sigma = [dijkstra3_rating.sigma]
     dijkstra4_sigma = [dijkstra4_rating.sigma]
 
-    max_rounds = 20
+    max_rounds = 50
+    minimum_sigma = 1.0  # Requirement for convergence
     round_number = 0
     max_sigma = max(random_player_rating.sigma, dijkstra3_rating.sigma, dijkstra4_rating.sigma)
-    while round_number < max_rounds and max_sigma >= 1.0:
+    while round_number < max_rounds and max_sigma >= minimum_sigma:
         print("Currently playing round number %d of %d" % (round_number + 1, max_rounds))
         print("Highest sigma is %.3f" % max_sigma)
 
