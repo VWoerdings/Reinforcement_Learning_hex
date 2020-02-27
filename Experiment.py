@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import trueskill as ts
+import time
 
 import TerminatorHex
 from HexBoard import HexBoard
@@ -23,7 +24,7 @@ def play_1v1(player1_move, player1_rating, player2_move, player2_rating, cur_rou
         player2_rating (ts.Rating): Current rating for player 2
         cur_round (int): Current iteration number. Used to determine player colors.
     """
-    board_size = 4
+    board_size = 5
 
     # Select color
     if cur_round % 2 == 0:
@@ -94,6 +95,7 @@ if __name__ == '__main__':
     minimum_sigma = 1.0  # Requirement for convergence
     round_number = 0
     max_sigma = max(random_player_rating.sigma, dijkstra3_rating.sigma, dijkstra4_rating.sigma)
+    start = time.time()
     while round_number < max_rounds and max_sigma >= minimum_sigma:
         print("Currently playing round number %d of %d" % (round_number + 1, max_rounds))
         print("Highest sigma is %.3f" % max_sigma)
@@ -122,11 +124,13 @@ if __name__ == '__main__':
 
         round_number += 1
         max_sigma = max(random_player_rating.sigma, dijkstra3_rating.sigma, dijkstra4_rating.sigma)
+    end = time.time()
 
     print("Final ratings are:")
     print(random_player_desc, ": ", random_player_rating, sep="")
     print(dijkstra3_desc, ": ", dijkstra3_rating, sep="")
     print(dijkstra4_desc, ": ", dijkstra4_rating, sep="")
+    print("Total time elapsed is %.3f" % (end-start))
 
     # Plot rating evolution
     random_half_sigma = np.array(random_player_sigma) / 2
