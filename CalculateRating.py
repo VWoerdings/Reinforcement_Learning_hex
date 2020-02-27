@@ -43,8 +43,8 @@ def play_1v1(player1_move, player1_rating, player2_move, player2_rating, cur_rou
 
 
 if __name__ == '__main__':
-    terminator_depth_3 = TerminatorHex.TerminatorHex(3, True, do_transposition=False)
-    terminator_depth_4 = TerminatorHex.TerminatorHex(4, True, do_transposition=False)
+    terminator_depth_3 = TerminatorHex.TerminatorHex(3, do_transposition=False)
+    terminator_depth_4 = TerminatorHex.TerminatorHex(4, do_transposition=False)
 
     random_player_move = terminator_depth_3.random_move
     dijkstra3_move = terminator_depth_3.terminator_move
@@ -66,7 +66,7 @@ if __name__ == '__main__':
     dijkstra3_sigma = [dijkstra3_rating.sigma]
     dijkstra4_sigma = [dijkstra4_rating.sigma]
 
-    max_rounds = 5
+    max_rounds = 12
     round_number = 0
     while round_number < max_rounds:
         print("Currently playing round number %d of %d" % (round_number + 1, max_rounds))
