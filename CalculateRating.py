@@ -18,7 +18,7 @@ def play_1v1(player1_move, player1_rating, player2_move, player2_rating, cur_rou
         player2_rating (ts.Rating): Current rating for player 2
         cur_round (int): Current iteration number. Used to determine player colors.
     """
-    board_size = 4
+    board_size = 5
 
     # Select color
     if cur_round % 2 == 0:
@@ -124,6 +124,7 @@ if __name__ == '__main__':
     plt.errorbar(range(max_rounds + 1), random_player_mu, yerr=random_half_sigma, label=random_player_desc, fmt='o')
     plt.errorbar(range(max_rounds + 1), dijkstra3_mu, yerr=dijkstra3_half_sigma, label=dijkstra3_desc, fmt='o')
     plt.errorbar(range(max_rounds + 1), dijkstra4_mu, yerr=dijkstra4_half_sigma, label=dijkstra4_desc, fmt='o')
+    plt.title("Skill rating vs number of rounds played (2 games per round)")
     plt.xlabel("Round number")
     plt.ylabel("Rating")
     plt.ylim((0, 50))
