@@ -66,10 +66,12 @@ if __name__ == '__main__':
     dijkstra3_sigma = [dijkstra3_rating.sigma]
     dijkstra4_sigma = [dijkstra4_rating.sigma]
 
-    max_rounds = 12
+    max_rounds = 20
     round_number = 0
-    while round_number < max_rounds:
+    max_sigma = max(random_player_rating.sigma, dijkstra3_rating.sigma, dijkstra4_rating.sigma)
+    while round_number < max_rounds and max_sigma >= 1.0:
         print("Currently playing round number %d of %d" % (round_number + 1, max_rounds))
+        print("Highest sigma is %.3f" % max_sigma)
 
         # Random vs dijkstra3
         print("Playing", random_player_desc, "vs", dijkstra3_desc)
@@ -78,10 +80,8 @@ if __name__ == '__main__':
 
         # Dijkstra3 vs dijkstra4
         print("Playing", dijkstra3_desc, "vs", dijkstra4_desc)
-        random_player_rating, dijkstra3_rating = play_1v1(random_player_move, random_player_rating,
-                                                          dijkstra3_move, dijkstra3_rating, round_number)
-        # dijkstra3_rating, dijkstra4_rating = play_1v1(dijkstra3_move, dijkstra3_rating,
-        #                                               dijkstra4_move, dijkstra4_rating, round_number)
+        dijkstra3_rating, dijkstra4_rating = play_1v1(dijkstra3_move, dijkstra3_rating,
+                                                      dijkstra4_move, dijkstra4_rating, round_number)
 
         # Random vs dijkstra4
         print("Playing", random_player_desc, "vs", dijkstra4_desc)
@@ -96,6 +96,7 @@ if __name__ == '__main__':
         dijkstra4_sigma.append(dijkstra4_rating.sigma)
 
         round_number += 1
+        max_sigma = max(random_player_rating.sigma, dijkstra3_rating.sigma, dijkstra4_rating.sigma)
 
     print("Final ratings are:")
     print(random_player_desc, ": ", random_player_rating, sep="")
