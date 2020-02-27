@@ -1,11 +1,31 @@
 # Reinforcement_Learning_hex
 
-HexGame.py is the main program.
+Each section of the assignment has its own .py file.
 
-HexBoard.py contains a class that stores, computes and displays the hex board.
+## Search.py
+This file contains a Hex implementation consisting of:
+  A search function: alpha-beta
+  A move generator
+  A random evaluator function
+It is possible to play against the random AI using either the text-based interface or the graphical interface.
 
-RegularPolygon.py contains a class that calculates the vertices of each hexagon.
+## Eval.py
+Similar to Search.py, but now the AI uses Dijkstra's shortest path algorithmm as a heuristic evaluation function.
 
-TerminatorHex.py contains a class that is responsible for AI behaviour. It contains several heuristic evaluators and move generators.
+## Experiment.py
+This file uses the TrueSkill library to determine the skill rating of three AI, by playing them against each other.
+This script rates the following AIs:
+  AI with random evaluation
+  AI with search depth 3 and Dijkstra evaluation
+  AI with search depth 4 and Dijkstra evaluation
 
-CalculateRating.py contains a script that calculates the rating of three Hex AI algorithms with the trueskill library by playing them against each other in a series of game.
+## IterativeDeepening_TranspositionTables.py
+Similar to Experiment.py, but now the AIs have iterative deepening and transposition tables enabled.
+
+# Files that are needed to run the previous scripts
+## HexBoard.py
+Contains a class that stores, computes and displays the hex board.
+## RegularPolygon.py
+Contains a class that calculates the vertices of a regular hexagon. Needed to draw the graphical interface.
+## TerminatorHex.py
+Contains a class that is responsible for AI behaviour. It contains several heuristic evaluators and move generators.
