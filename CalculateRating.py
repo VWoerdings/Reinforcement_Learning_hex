@@ -26,8 +26,8 @@ def play_1v1(player1_move, player1_rating, player2_move, player2_rating, cur_rou
         red_ai_move = player1_move
 
     board = HexBoard(board_size, n_players=0, enable_gui=False,
-                     interactive_text=False, ai_move=None, blue_ai_move=blue_ai_move,
-                     red_ai_move=red_ai_move, ai_color=None, move_list=[])
+                     interactive_text=False, ai_color=None, ai_move=None, blue_ai_move=blue_ai_move,
+                     red_ai_move=red_ai_move, move_list=[])
 
     winning_color = board.get_winning_color()
     if winning_color == player1_color:

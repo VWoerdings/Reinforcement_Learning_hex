@@ -4,7 +4,6 @@ from itertools import groupby
 from math import cos, tan, pi
 from tkinter import messagebox
 from typing import Callable
-from copy import deepcopy
 
 from RegularPolygon import RegularPolygon
 
@@ -110,8 +109,7 @@ class HexBoard:
                     x, y = self.ai_move(self)
                 self.place((x, y))
         # elif not self.enable_GUI:
-            # raise SystemExit('No interface was activated')
-
+        # raise SystemExit('No interface was activated')
 
         if self.enable_GUI:
             self.WIN_WIDTH = 2 * HexBoard.X_PADDING + (self.board_size - 1) * 1.5 * HexBoard.HEX_SIZE
@@ -133,7 +131,8 @@ class HexBoard:
             self.window.mainloop()
 
     def __deepcopy__(self, memodict={}):
-        return HexBoard(self.board_size, move_list=self.move_list)
+        return HexBoard(self.board_size, n_players=2, enable_gui=False, interactive_text=False, ai_move=None,
+                        blue_ai_move=None, red_ai_move=None, move_list=self.move_list)
 
     def get_winning_color(self):
         if self.check_win(HexBoard.RED):
@@ -307,7 +306,7 @@ class HexBoard:
                 else:
                     self.canvas.itemconfig(hexagon_id, fill="red")
         if self.ai_to_move() and \
-                not color == HexBoard.EMPTY: # Do not make an IA move when undoing
+                not color == HexBoard.EMPTY:  # Do not make an IA move when undoing
             if self.n_players == 0:
                 if self.blue_to_move:
                     x, y = self.blue_ai_move(self)

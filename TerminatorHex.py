@@ -123,7 +123,8 @@ class TerminatorHex:
         Returns:
             (int, int): AI player move.
         """
-        copy_of_board = HexBoard(hex_board.board_size, move_list=hex_board.move_list)
+        copy_of_board = HexBoard(hex_board.board_size, n_players=2, enable_gui=False, interactive_text=False,
+                                 ai_move=None, blue_ai_move=None, red_ai_move=None, move_list=hex_board.move_list)
         alpha = float('-inf')  # initial alpha beta bounds
         beta = float('inf')
         if self.do_transposition:
@@ -203,7 +204,8 @@ def minimax(hex_board, depth, max_or_min, evaluator):
         Returns:
             int: maximised/minimised value according to the evaluator
         """
-    copy_of_board = HexBoard(board.board_size, move_list=board.move_list)
+    copy_of_board = HexBoard(board.board_size, n_players=2, enable_gui=False, interactive_text=False, ai_move=None,
+                             blue_ai_move=None, red_ai_move=None, move_list=board.move_list)
     moves = hex_board.get_free_positions()
     maximiser_color = [hex_board.BLUE, hex_board.RED][(max_or_min == 'max') ^ (hex_board.blue_to_move)]
     is_game_over = False
@@ -248,7 +250,8 @@ def alpha_beta(hex_board, depth, max_or_min, alpha, beta, evaluator, depth_weigh
         Returns:
             int: maximised/minimised value according to the evaluator
     """
-    copy_of_board = HexBoard(hex_board.board_size, move_list=hex_board.move_list)
+    copy_of_board = HexBoard(hex_board.board_size, n_players=2, enable_gui=False, interactive_text=False, ai_move=None,
+                             blue_ai_move=None, red_ai_move=None, move_list=hex_board.move_list)
     maximiser_color = [hex_board.BLUE, hex_board.RED][(max_or_min == 'max') ^ (hex_board.blue_to_move)]
     is_game_over = False
     if (hex_board.check_win(hex_board.BLUE) or hex_board.check_win(hex_board.RED)):
@@ -318,7 +321,8 @@ def order_moves_TT(hex_board, max_or_min, transposition_table, return_key_values
         Returns:
             list: Sorted list of moves
     """
-    copy_of_board = HexBoard(board.board_size, move_list=board.move_list)
+    copy_of_board = HexBoard(board.board_size, n_players=2, enable_gui=False, interactive_text=False, ai_move=None,
+                             blue_ai_move=None, red_ai_move=None, move_list=board.move_list)
     moves = [[move, 0] for move in hex_board.get_free_positions()]  # [move, score]
     for m in range(len(moves)):
         move = moves[m][0]
