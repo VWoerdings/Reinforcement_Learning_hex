@@ -4,6 +4,7 @@ from itertools import groupby
 from math import cos, tan, pi
 from tkinter import messagebox
 from typing import Callable
+import copy
 
 from RegularPolygon import RegularPolygon
 
@@ -56,7 +57,7 @@ class HexBoard:
             for y in range(board_size):
                 self.board[x, y] = HexBoard.EMPTY
 
-        self.move_list = move_list  # List containing history of made moves
+        self.move_list = copy.copy(move_list)  # List containing history of made moves
         self.game_over = False
         self.blue_to_move = True  # Blue is the first player
 
@@ -92,7 +93,7 @@ class HexBoard:
         if move_list:
             for move in move_list:
                 x, y = self.string_to_coord(move)
-                self.set_position_auto((x, y))
+                self.set_position_auto((x, y), no_append=True)
 
         if self.interactive_text:
             self.quit = False
@@ -659,15 +660,18 @@ class HexBoard:
 
         return positions
 
-    def set_position(self, position, color):
-        """Same as self.place, ignores win checks and board checks"""
+    def set_position(self, position, color, no_append=False):
+        """Same as self.place, ignores win checks and board checks
+            note: no_append prevents appending the move to self.move_list"""
         self.board[position] = color
+        if not no_append:
+            self.move_list.append(self.coord_to_string(position))
 
-    def set_position_auto(self, position):
+    def set_position_auto(self, position, no_append=False):
         """Sampe as self.set_position with blue_to_move check"""
         color = [HexBoard.RED, HexBoard.BLUE][self.blue_to_move]
         self.blue_to_move = [True, False][self.blue_to_move]  # flip blue_to_move
-        self.set_position(position, color)
+        self.set_position(position, color, no_append=no_append)
 
 
 def split_text(s):

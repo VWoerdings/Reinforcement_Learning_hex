@@ -143,6 +143,8 @@ class TerminatorHex:
             for move in moves:
                 deepened_board = HexBoard(hex_board.board_size, n_players=2, enable_gui=False, interactive_text=False, ai_move=None, blue_ai_move=None, red_ai_move=None, move_list=hex_board.move_list)
                 deepened_board.set_position_auto(move)
+                #print(deepened_board.move_list)
+                #print(hex_board.move_list)
                 # new_value = minimax(deepened_board, depth - 1, 'min', self.heuristic_evaluator) # use for minimax
                 new_value, alpha, beta = alpha_beta(deepened_board, depth - 1, 'min', alpha, beta,
                                                     self.heuristic_evaluator, depth_weighting=self.depth_weighting,
@@ -173,7 +175,7 @@ class TerminatorHex:
     def suggested_sum_scores(self, hex_board, maximiser_color):
         val = dijkstra_score_heuristic(hex_board, maximiser_color, max_score=(hex_board.board_size * 10))
         val += 0.6 * board_center_control(hex_board, maximiser_color)
-        val += 0.1 * random.random()
+        val += 0.2 * random.random()
         return val
 
     def cull_transposition_table(self, num):
@@ -251,6 +253,9 @@ def alpha_beta(hex_board, depth, max_or_min, alpha, beta, evaluator, depth_weigh
     if (hex_board.check_win(hex_board.BLUE) or hex_board.check_win(hex_board.RED)):
         is_game_over = True
 
+    #print(depth, max_or_min, alpha, beta)
+    #hex_board.print_board()
+
     use_transposition = [False, True][transposition_table != None]
     if depth > 0:
         if use_transposition:
@@ -270,6 +275,8 @@ def alpha_beta(hex_board, depth, max_or_min, alpha, beta, evaluator, depth_weigh
         value = float('-inf')
         for move in moves:
             deepened_board = HexBoard(hex_board.board_size, n_players=2, enable_gui=False, interactive_text=False, ai_move=None, blue_ai_move=None, red_ai_move=None, move_list=hex_board.move_list)
+            #print("b")
+            #deepened_board.print_board()
             deepened_board.set_position_auto(move)
             new_value, _, _ = alpha_beta(deepened_board, depth - 1, 'min', alpha, beta, evaluator,
                                          depth_weighting=depth_weighting)
@@ -450,24 +457,27 @@ def board_center_control(hex_board, maximiser_color):
     for k in hex_board.board.keys():
         if hex_board.board[k] == maximiser_color:  # my color
             maximiser_num_tiles = + 1
-            maximiser_centrality += (bs / 2) - max(abs((bs / 2) - k[0]),
-                                                   abs((bs / 2) - k[1]))  # board centrality of that tile
+            maximiser_centrality += ((bs / 2) - 0.5) - max(abs((bs / 2) - k[0] - 0.5),
+                                                   abs((bs / 2) - k[1] - 0.5))  # board centrality of that tile
         elif hex_board.board[k] != hex_board.EMPTY:  # opponent color
             opponent_num_tiles = + 1
-            opponent_centrality += (bs / 2) - max(abs((bs / 2) - k[0]), abs((bs / 2) - k[1]))
+            opponent_centrality += ((bs / 2) - 0.5) - max(abs((bs / 2) - k[0] - 0.5), abs((bs / 2) - k[1] - 0.5))
 
     maximiser_centrality /= (bs / 2)  # normalise
     opponent_centrality /= (bs / 2)
-    return ((maximiser_centrality - maximiser_num_tiles) - (
-            opponent_centrality - opponent_num_tiles))  # difference in center control
+    maximiser_num_tiles = max(1, maximiser_num_tiles) # prevent d.b.z.
+    opponent_num_tiles = max(1, opponent_num_tiles)
+    return ((maximiser_centrality / maximiser_num_tiles) - (
+            opponent_centrality / opponent_num_tiles))  # difference in center control
 
 
 if __name__ == '__main__':
     import HexBoard as hb
 
-    h = hb.HexBoard(5)
+    h = hb.HexBoard(4)
     print(board_dijkstra(h, h.BLUE))
-    h.set_position((1, 1), h.BLUE)
+    h.set_position((0, 0), h.BLUE)
+    print(board_center_control(h, h.BLUE))
     print(board_dijkstra(h, h.BLUE))
     h.set_position((2, 1), h.BLUE)
     print(board_dijkstra(h, h.BLUE))
