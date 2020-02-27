@@ -7,6 +7,7 @@ class TerminatorHex:
     """A class that computes the the best move to make.
     Contains the following evaluator functions:
         dijkstra_score_heuristic: Difference in path length between current player and opponent.
+        Todo: update
     Contains the following move generators:
         random_move: Returns a non-deterministic random move.
         terminator_move: Uses the alpha-beta algorithm and the chosen heuristic evaluator to compute the best move.
@@ -193,6 +194,10 @@ class TerminatorHex:
             self.transposition_table.insert(0, {})  # append empty level table
             # note: optimise to deque
 
+def random_score_heuristic(board, maximiser_color):
+    """Returns a random score between -10 and 10"""
+    return random.randint(-10, 10)
+
 
 def minimax(hex_board, depth, max_or_min, evaluator):
     """The minimax algorithm on the HexBoard
@@ -366,7 +371,6 @@ def board_as_hash_key(hex_board):
     for k in hex_board.board.keys():
         board_list.append(hex_board.board[k])
     return tuple(board_list)
-
 
 def dijkstra_score_heuristic(hex_board, maximiser_color, max_score='inf'):
     """Dijkstra Hex score heuristic

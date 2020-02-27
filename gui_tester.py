@@ -3,10 +3,12 @@ import numpy as np
 import TerminatorHex
 from HexBoard import HexBoard
 
+""" Simple class to play a single player game against an AI using the GUI.
+"""
 
 if __name__ == '__main__':
     enable_GUI = True
-    enable_interactive_text = False
+    enable_interactive_text = True
     board_size = 5
     n_players = 1
     ai_color = HexBoard.BLUE
