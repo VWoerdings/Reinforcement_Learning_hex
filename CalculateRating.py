@@ -27,7 +27,7 @@ def play_1v1(player1_move, player1_rating, player2_move, player2_rating, cur_rou
 
     board = HexBoard(board_size, n_players=0, enable_gui=False,
                      interactive_text=False, ai_move=None, blue_ai_move=blue_ai_move,
-                     red_ai_move=red_ai_move, ai_color=None)
+                     red_ai_move=red_ai_move, ai_color=None, move_list=[])
 
     winning_color = board.get_winning_color()
     if winning_color == player1_color:
@@ -43,8 +43,8 @@ def play_1v1(player1_move, player1_rating, player2_move, player2_rating, cur_rou
 
 
 if __name__ == '__main__':
-    terminator_depth_3 = TerminatorHex.TerminatorHex(3, True)
-    terminator_depth_4 = TerminatorHex.TerminatorHex(4, True)
+    terminator_depth_3 = TerminatorHex.TerminatorHex(3, True, do_transposition=False)
+    terminator_depth_4 = TerminatorHex.TerminatorHex(4, True, do_transposition=False)
 
     random_player_move = terminator_depth_3.random_move
     dijkstra3_move = terminator_depth_3.terminator_move
@@ -78,8 +78,10 @@ if __name__ == '__main__':
 
         # Dijkstra3 vs dijkstra4
         print("Playing", dijkstra3_desc, "vs", dijkstra4_desc)
-        dijkstra3_rating, dijkstra4_rating = play_1v1(dijkstra3_move, dijkstra3_rating,
-                                                      dijkstra4_move, dijkstra4_rating, round_number)
+        random_player_rating, dijkstra3_rating = play_1v1(random_player_move, random_player_rating,
+                                                          dijkstra3_move, dijkstra3_rating, round_number)
+        # dijkstra3_rating, dijkstra4_rating = play_1v1(dijkstra3_move, dijkstra3_rating,
+        #                                               dijkstra4_move, dijkstra4_rating, round_number)
 
         # Random vs dijkstra4
         print("Playing", random_player_desc, "vs", dijkstra4_desc)

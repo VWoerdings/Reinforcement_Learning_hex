@@ -1,6 +1,7 @@
-import copy
 import random
 import time
+from HexBoard import HexBoard
+
 
 class TerminatorHex:
     """A class that computes the the best move to make.
@@ -11,7 +12,8 @@ class TerminatorHex:
         terminator_move: Uses the alpha-beta algorithm and the chosen heuristic evaluator to compute the best move.
     """
 
-    def __init__(self, max_depth, use_suggested_heuristic=True, heuristic_evaluator=None, depth_weighting=0, random_seed=100,
+    def __init__(self, max_depth, use_suggested_heuristic=True, heuristic_evaluator=None, depth_weighting=0,
+                 random_seed=100,
                  do_iterative_deepening=True, max_time=None, do_transposition=False):
         """Initializes the Terminator AI for the HEX game.
         Args:
@@ -50,10 +52,11 @@ class TerminatorHex:
             self.max_time = None
             self.do_transposition = False
 
-        self.last_seen_num_tiles = 0 # how many tiles were colored in the last-received board, i.e. determine number of moves we are 'behind'
+        self.last_seen_num_tiles = 0  # how many tiles were colored in the last-received board, i.e. determine number of moves we are 'behind'
         self.transposition_table = None
         if self.do_transposition:
-            self.transposition_table = [{} for _ in range(self.max_depth + 1)] # initialise a list of level-wise transpositions
+            self.transposition_table = [{} for _ in
+                                        range(self.max_depth + 1)]  # initialise a list of level-wise transpositions
 
     def terminator_move(self, board, do_tile_increase=True):
         """Returns the best move according to the chosen heuristic evaluation function an the min-max algorithm.
@@ -63,11 +66,12 @@ class TerminatorHex:
         Returns:
             (int, int): AI player move.
         """
+
         if not self.do_iterative_deepening:
-            old_state = random.getstate() # state capture
-            move = self.terminator_min_max(board, self.max_depth, 'max') # get move
-            random.setstate(old_state) # state restore
-            if do_tile_increase: # tile counting
+            old_state = random.getstate()  # state capture
+            move = self.terminator_min_max(board, self.max_depth, 'max')  # get move
+            random.setstate(old_state)  # state restore
+            if do_tile_increase:  # tile counting
                 num_tiles_now = 0
                 for k in board.board.keys():
                     if board.board[k] != board.EMPTY:
@@ -80,19 +84,19 @@ class TerminatorHex:
                     num_tiles_now += 1
             if self.do_transposition:
                 self.cull_transposition_table(num_tiles_now - self.last_seen_num_tiles)
-            
+
             for depth in range(1, self.max_depth + 1):
-                start_time = time.time() # move timing
-                old_state = random.getstate() # state capture
-                move = self.terminator_min_max(board, depth, 'max') # get move
-                random.setstate(old_state) # state restore
+                start_time = time.time()  # move timing
+                old_state = random.getstate()  # state capture
+                move = self.terminator_min_max(board, depth, 'max')  # get move
+                random.setstate(old_state)  # state restore
                 end_time = time.time()
                 if self.max_time != None:
                     if (end_time - start_time) > self.max_time:
-                        break # break upon time exceed
+                        break  # break upon time exceed
 
         if do_tile_increase:
-                self.last_seen_num_tiles = num_tiles_now + 1
+            self.last_seen_num_tiles = num_tiles_now + 1
         return move
 
     def random_move(self, board):
@@ -119,6 +123,7 @@ class TerminatorHex:
         Returns:
             (int, int): AI player move.
         """
+        copy_of_board = HexBoard(hex_board.board_size, move_list=hex_board.move_list)
         alpha = float('-inf')  # initial alpha beta bounds
         beta = float('inf')
         if self.do_transposition:
@@ -137,12 +142,12 @@ class TerminatorHex:
             value = float('-inf')
             best_move = moves[0]  # prevent None return
             for move in moves:
-                deepened_board = copy.deepcopy(hex_board)
+                deepened_board = copy_of_board
                 deepened_board.set_position_auto(move)
                 # new_value = minimax(deepened_board, depth - 1, 'min', self.heuristic_evaluator) # use for minimax
-                new_value, alpha, beta = alpha_beta(deepened_board, depth - 1, 'min', alpha, beta, 
-                                       self.heuristic_evaluator, depth_weighting=self.depth_weighting,
-                                       transposition_table=self.transposition_table)
+                new_value, alpha, beta = alpha_beta(deepened_board, depth - 1, 'min', alpha, beta,
+                                                    self.heuristic_evaluator, depth_weighting=self.depth_weighting,
+                                                    transposition_table=self.transposition_table)
                 if (new_value > value):
                     value = new_value
                     best_move = move
@@ -153,12 +158,12 @@ class TerminatorHex:
             value = float('inf')
             best_move = moves[0]
             for move in moves:
-                deepened_board = copy.deepcopy(hex_board)
+                deepened_board = copy_of_board
                 deepened_board.set_position_auto(move)
                 # new_value = minimax(deepened_board, depth - 1, 'max', self.heuristic_evaluator)
                 new_value, alpha, beta = alpha_beta(deepened_board, depth - 1, 'max', alpha, beta,
-                                       self.heuristic_evaluator, depth_weighting=self.depth_weighting,
-                                       transposition_table=self.transposition_table)
+                                                    self.heuristic_evaluator, depth_weighting=self.depth_weighting,
+                                                    transposition_table=self.transposition_table)
                 if (new_value < value):
                     value = new_value
                     best_move = move
@@ -171,7 +176,7 @@ class TerminatorHex:
         val += 0.6 * board_center_control(hex_board, maximiser_color)
         val += 0.1 * random.random()
         return val
-    
+
     def cull_transposition_table(self, num):
         """Clears levels from the transposition table. Call after making a move(s).
             Args:
@@ -180,13 +185,13 @@ class TerminatorHex:
         if not self.do_transposition:
             print("@TerminatorHex.cull_transposition_table: cull called, but we're not in transposition mode")
             return
-        
+
         num_real = max(0, min(self.max_depth + 1, num))
         for i in range(num_real):
-            self.transposition_table.pop(self.max_depth) # reset level dict at top level
-            self.transposition_table.insert(0, {}) # append empty level table
+            self.transposition_table.pop(self.max_depth)  # reset level dict at top level
+            self.transposition_table.insert(0, {})  # append empty level table
             # note: optimise to deque
-            
+
 
 def minimax(hex_board, depth, max_or_min, evaluator):
     """The minimax algorithm on the HexBoard
@@ -198,7 +203,7 @@ def minimax(hex_board, depth, max_or_min, evaluator):
         Returns:
             int: maximised/minimised value according to the evaluator
         """
-
+    copy_of_board = HexBoard(board.board_size, move_list=board.move_list)
     moves = hex_board.get_free_positions()
     maximiser_color = [hex_board.BLUE, hex_board.RED][(max_or_min == 'max') ^ (hex_board.blue_to_move)]
     is_game_over = False
@@ -211,7 +216,7 @@ def minimax(hex_board, depth, max_or_min, evaluator):
     elif max_or_min == 'max':  # maximise
         value = float('-inf')
         for move in moves:
-            deepened_board = copy.deepcopy(hex_board)
+            deepened_board = copy_of_board
             deepened_board.set_position_auto(move)
             new_value = minimax(deepened_board, depth - 1, 'min', evaluator)
             value = [value, new_value][new_value > value]
@@ -219,7 +224,7 @@ def minimax(hex_board, depth, max_or_min, evaluator):
     elif (max_or_min == 'min'):  # minimise
         value = float('inf')
         for move in moves:
-            deepened_board = copy.deepcopy(hex_board)
+            deepened_board = copy_of_board
             deepened_board.set_position_auto(move)
             new_value = minimax(deepened_board, depth - 1, 'max', evaluator)
             value = [value, new_value][new_value < value]
@@ -227,6 +232,7 @@ def minimax(hex_board, depth, max_or_min, evaluator):
 
     print("@minimax: unknown max_or_min objective", max_or_min)
     return None
+
 
 def alpha_beta(hex_board, depth, max_or_min, alpha, beta, evaluator, depth_weighting=0, transposition_table=None):
     """The minimax algorithm on the HexBoard with alpha-beta-pruning
@@ -242,11 +248,12 @@ def alpha_beta(hex_board, depth, max_or_min, alpha, beta, evaluator, depth_weigh
         Returns:
             int: maximised/minimised value according to the evaluator
     """
+    copy_of_board = HexBoard(hex_board.board_size, move_list=hex_board.move_list)
     maximiser_color = [hex_board.BLUE, hex_board.RED][(max_or_min == 'max') ^ (hex_board.blue_to_move)]
     is_game_over = False
     if (hex_board.check_win(hex_board.BLUE) or hex_board.check_win(hex_board.RED)):
         is_game_over = True
-    
+
     use_transposition = [False, True][transposition_table != None]
     if depth > 0:
         if use_transposition:
@@ -254,7 +261,7 @@ def alpha_beta(hex_board, depth, max_or_min, alpha, beta, evaluator, depth_weigh
         else:
             moves = hex_board.get_free_positions()
     else:
-        moves = None # don't need to compute this, save time
+        moves = None  # don't need to compute this, save time
 
     # minimax with alpha-beta pruning:
     if (depth <= 0 or is_game_over or len(moves) == 0):  # end state
@@ -265,36 +272,39 @@ def alpha_beta(hex_board, depth, max_or_min, alpha, beta, evaluator, depth_weigh
     elif (max_or_min == 'max'):  # maximise
         value = float('-inf')
         for move in moves:
-            deepened_board = copy.deepcopy(hex_board)
+            deepened_board = copy_of_board
             deepened_board.set_position_auto(move)
-            new_value, _, _ = alpha_beta(deepened_board, depth - 1, 'min', alpha, beta, evaluator, depth_weighting=depth_weighting)
+            new_value, _, _ = alpha_beta(deepened_board, depth - 1, 'min', alpha, beta, evaluator,
+                                         depth_weighting=depth_weighting)
             if new_value > value:
                 value = new_value
                 if use_transposition:
                     transposition_table[depth][board_as_hash_key(hex_board)] = value
             alpha = [alpha, new_value][new_value > alpha]
             if alpha >= beta:  # beta cutoff
-                #print("beta", alpha, beta)
+                # print("beta", alpha, beta)
                 break
         return (value, alpha, beta)
     elif (max_or_min == 'min'):  # minimise
         value = float('inf')
         for move in moves:
-            deepened_board = copy.deepcopy(hex_board)
+            deepened_board = copy_of_board
             deepened_board.set_position_auto(move)
-            new_value, _, _ = alpha_beta(deepened_board, depth - 1, 'max', alpha, beta, evaluator, depth_weighting=depth_weighting)
+            new_value, _, _ = alpha_beta(deepened_board, depth - 1, 'max', alpha, beta, evaluator,
+                                         depth_weighting=depth_weighting)
             if new_value < value:
                 value = new_value
                 if use_transposition:
                     transposition_table[depth][board_as_hash_key(hex_board)] = value
             beta = [beta, new_value][new_value < beta]
             if alpha >= beta:  # alpha cutoff
-                #print("alpha", alpha, beta)
+                # print("alpha", alpha, beta)
                 break
         return (value, alpha, beta)
 
     print("@alpha_beta: unknown max_or_min objective", max_or_min)
     return None
+
 
 def order_moves_TT(hex_board, max_or_min, transposition_table, return_key_values=False):
     """Used with the transposition table algorithm. If we have a transposition table bound to self,
@@ -308,22 +318,25 @@ def order_moves_TT(hex_board, max_or_min, transposition_table, return_key_values
         Returns:
             list: Sorted list of moves
     """
-    moves = [[move, 0] for move in hex_board.get_free_positions()] # [move, score]
+    copy_of_board = HexBoard(board.board_size, move_list=board.move_list)
+    moves = [[move, 0] for move in hex_board.get_free_positions()]  # [move, score]
     for m in range(len(moves)):
         move = moves[m][0]
-        deepened_board = copy.deepcopy(hex_board)
+        deepened_board = copy_of_board
         deepened_board.set_position_auto(move)
         try:
             moves[m][1] = transposition_table[board_as_hash_key(deepened_board)]
         except KeyError:
-            #print("@order_moves_TT: could not find deepened board in transposition table. Move order may now be incorrect") # actually, this is expected behaviour
-            moves[m][1] = [float('inf'), float('-inf')][max_or_min == 'max'] # instead, append it to the end of the moves list, do the known moves first
-    sort_order = [False, True][max_or_min == 'max'] # so default = min
-    moves.sort(key = lambda val: val[1], reverse=sort_order)  # sort ascending or descending
+            # print("@order_moves_TT: could not find deepened board in transposition table. Move order may now be incorrect") # actually, this is expected behaviour
+            moves[m][1] = [float('inf'), float('-inf')][
+                max_or_min == 'max']  # instead, append it to the end of the moves list, do the known moves first
+    sort_order = [False, True][max_or_min == 'max']  # so default = min
+    moves.sort(key=lambda val: val[1], reverse=sort_order)  # sort ascending or descending
     if return_key_values:
         return moves
     else:
-        return [val[0] for val in moves] # handle from 0 to len as proper ordering
+        return [val[0] for val in moves]  # handle from 0 to len as proper ordering
+
 
 def board_hash(hex_board, maximiser_color):
     """Hash the board, for deterministic random AI position evaluator.
@@ -338,6 +351,7 @@ def board_hash(hex_board, maximiser_color):
         board_list.append(hex_board.board[k])
     return hash(tuple(board_list))
 
+
 def board_as_hash_key(hex_board):
     """Same as board_hash, but does not return hash value, only tuple key.
     Args:
@@ -349,6 +363,7 @@ def board_as_hash_key(hex_board):
     for k in hex_board.board.keys():
         board_list.append(hex_board.board[k])
     return tuple(board_list)
+
 
 def dijkstra_score_heuristic(hex_board, maximiser_color, max_score='inf'):
     """Dijkstra Hex score heuristic
@@ -367,11 +382,12 @@ def dijkstra_score_heuristic(hex_board, maximiser_color, max_score='inf'):
     opponent_color = [hex_board.BLUE, hex_board.RED][maximiser_color == hex_board.BLUE]
     my_dijkstra = board_dijkstra(hex_board, maximiser_color)
     your_dijkstra = board_dijkstra(hex_board, opponent_color)
-    if your_dijkstra == 0: # losing move
+    if your_dijkstra == 0:  # losing move
         return loss_return
-    if my_dijkstra == 0: # winning move
+    if my_dijkstra == 0:  # winning move
         return win_return
-    return (your_dijkstra - my_dijkstra) # difference in advantage: maximise this quantity
+    return (your_dijkstra - my_dijkstra)  # difference in advantage: maximise this quantity
+
 
 def board_dijkstra(hex_board, maximiser_color):
     """Dijkstra's algorithm on the Hex board. Compute the shortest path length of edge-edge traversal
@@ -397,7 +413,8 @@ def board_dijkstra(hex_board, maximiser_color):
     minimal_traverse_path_length = float('inf')
     for e in edge_positions:
         distances = {key: float('inf') for key in hex_board.board.keys()}  # initiate distances
-        if (hex_board.board[e] != opponent_color):  # continuing if this is true is useless because opponent has captured this edge tile
+        if (hex_board.board[
+            e] != opponent_color):  # continuing if this is true is useless because opponent has captured this edge tile
             unvisited = [k for k in hex_board.board.keys()]  # prevent node revisiting
             distances[e] = [0, 1][hex_board.board[
                                       e] == hex_board.EMPTY]  # if it is empty, set cost to 1 because we still need to fill that tile
@@ -427,6 +444,7 @@ def board_dijkstra(hex_board, maximiser_color):
 
     return minimal_traverse_path_length
 
+
 def board_center_control(hex_board, maximiser_color):
     maximiser_centrality = 0
     maximiser_num_tiles = 0
@@ -434,16 +452,19 @@ def board_center_control(hex_board, maximiser_color):
     opponent_num_tiles = 0
     bs = hex_board.board_size
     for k in hex_board.board.keys():
-        if hex_board.board[k] == maximiser_color: # my color
-            maximiser_num_tiles =+ 1
-            maximiser_centrality += (bs / 2) - max(abs((bs / 2) - k[0]), abs((bs / 2) - k[1])) # board centrality of that tile
-        elif hex_board.board[k] != hex_board.EMPTY: # opponent color
-            opponent_num_tiles =+ 1
+        if hex_board.board[k] == maximiser_color:  # my color
+            maximiser_num_tiles = + 1
+            maximiser_centrality += (bs / 2) - max(abs((bs / 2) - k[0]),
+                                                   abs((bs / 2) - k[1]))  # board centrality of that tile
+        elif hex_board.board[k] != hex_board.EMPTY:  # opponent color
+            opponent_num_tiles = + 1
             opponent_centrality += (bs / 2) - max(abs((bs / 2) - k[0]), abs((bs / 2) - k[1]))
 
-    maximiser_centrality /= (bs / 2) # normalise
+    maximiser_centrality /= (bs / 2)  # normalise
     opponent_centrality /= (bs / 2)
-    return ((maximiser_centrality - maximiser_num_tiles) - (opponent_centrality - opponent_num_tiles)) # difference in center control
+    return ((maximiser_centrality - maximiser_num_tiles) - (
+            opponent_centrality - opponent_num_tiles))  # difference in center control
+
 
 if __name__ == '__main__':
     import HexBoard as hb

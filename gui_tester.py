@@ -11,6 +11,6 @@ if __name__ == '__main__':
     n_players = 1
     ai_color = HexBoard.BLUE
 
-    terminator_AI = TerminatorHex.TerminatorHex(3, True)
+    terminator_AI = TerminatorHex.TerminatorHex(2, True)
     board = HexBoard(board_size, n_players=n_players, enable_gui=enable_GUI, interactive_text=enable_interactive_text,
                      ai_move=terminator_AI.terminator_move, ai_color=ai_color)

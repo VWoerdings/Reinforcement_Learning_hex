@@ -34,7 +34,7 @@ class HexBoard:
     PATTERN = '[a-zA-Z][0-9]'
 
     def __init__(self, board_size, n_players=2, enable_gui=False, interactive_text=False, ai_move: Callable = None,
-                 ai_color: int = None, blue_ai_move: Callable = None, red_ai_move: Callable = None):
+                 ai_color: int = None, blue_ai_move: Callable = None, red_ai_move: Callable = None, move_list=None):
         """Initializes the board and GUI if applicable.
         Args:
             board_size (int): Size of the hexagon grid.
@@ -47,14 +47,17 @@ class HexBoard:
                 respectively. One of these arguments is required when both players are ai.
             ai_color (int): Only applicable when n_players is 1. Determines which player is controlled by ai. Default is
                 Hexboard.RED.
+            move_list (List): list of moves made. This argument is used to copy hex boards and may not work with the gui or interactie text mode
         """
+        if move_list is None:
+            move_list = []
         self.board = {}
         self.board_size = board_size
         for x in range(board_size):
             for y in range(board_size):
                 self.board[x, y] = HexBoard.EMPTY
 
-        self.move_list = []  # List containing history of made moves
+        self.move_list = move_list  # List containing history of made moves
         self.game_over = False
         self.blue_to_move = True  # Blue is the first player
 
@@ -86,6 +89,11 @@ class HexBoard:
                 self.blue_ai_move = blue_ai_move
                 self.red_ai_move = red_ai_move
             self.enable_GUI = False
+
+        if move_list:
+            for move in move_list:
+                x, y = self.string_to_coord(move)
+                self.set_position_auto((x, y))
 
         if self.interactive_text:
             self.quit = False
@@ -125,15 +133,7 @@ class HexBoard:
             self.window.mainloop()
 
     def __deepcopy__(self, memodict={}):
-        copy = HexBoard(deepcopy(self.board_size, memodict), enable_gui=False)
-        # cls = self.__class__
-        # result = cls.__new__(cls)
-        # memodict[id(self)] = result
-        # for key, value in self.__dict__.items():
-        #     if not isinstance(value, tk.Tk) or
-        #         not isinstance(value, ):
-        #         setattr(result, key, deepcopy(value, memodict))
-        return copy
+        return HexBoard(self.board_size, move_list=self.move_list)
 
     def get_winning_color(self):
         if self.check_win(HexBoard.RED):
