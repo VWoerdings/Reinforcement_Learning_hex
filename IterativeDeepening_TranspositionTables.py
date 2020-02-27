@@ -4,56 +4,29 @@ import trueskill as ts
 
 import TerminatorHex
 from HexBoard import HexBoard
+from Experiment import play_1v1
 
 """This script calculates the rating of three Hex algorithms by playing them against each other and visualizes the 
-evolution of their ratings."""
-
-
-def play_1v1(player1_move, player1_rating, player2_move, player2_rating, cur_round):
-    """Plays two AI algorithms against each other and updates their ratings.
-    Args:
-        player1_move (function): Move generator for player 1
-        player1_rating (ts.Rating): Current rating for player 1
-        player2_move (function): Move generator for player 2
-        player2_rating (ts.Rating): Current rating for player 2
-        cur_round (int): Current iteration number. Used to determine player colors.
-    """
-    board_size = 5
-
-    # Select color
-    if cur_round % 2 == 0:
-        player1_color = HexBoard.BLUE
-        player2_color = HexBoard.RED
-        blue_ai_move = player1_move
-        red_ai_move = player2_move
-    else:
-        player1_color = HexBoard.RED
-        player2_color = HexBoard.BLUE
-        blue_ai_move = player2_move
-        red_ai_move = player1_move
-
-    board = HexBoard(board_size, n_players=0, enable_gui=False,
-                     interactive_text=False, ai_color=None, ai_move=None, blue_ai_move=blue_ai_move,
-                     red_ai_move=red_ai_move, move_list=[])
-    winning_color = board.get_winning_color()
-
-    # Update ratings
-    if winning_color == player1_color:
-        new_player1_rating, new_player2_rating = ts.rate_1vs1(player1_rating, player2_rating)
-    elif winning_color == player2_color:
-        new_player2_rating, new_player1_rating = ts.rate_1vs1(player2_rating, player1_rating)
-    else:
-        new_player1_rating = None
-        new_player2_rating = None
-        print("Rating error")
-
-    return new_player1_rating, new_player2_rating
-
+evolution of their ratings. Each round, each algorithm plays two games against the other two.
+This script rates the following AIs:
+    AI with random evaluation
+    AI with search depth 3 and Dijkstra evaluation
+    AI with search depth 4 and Dijkstra evaluation
+Compared to Experiment.py, now the AIs have iterative deepening and transposition tables enabled.
+"""
 
 if __name__ == '__main__':
     # Initialize AI
-    terminator_depth_3 = TerminatorHex.TerminatorHex(3, do_transposition=False)
-    terminator_depth_4 = TerminatorHex.TerminatorHex(4, do_transposition=False)
+    terminator_depth_3 = TerminatorHex.TerminatorHex(3, use_suggested_heuristic=False,
+                                                     heuristic_evaluator=TerminatorHex.dijkstra_score_heuristic,
+                                                     depth_weighting=0, random_seed='random',
+                                                     do_iterative_deepening=True, max_time=None, do_transposition=True
+                                                     )
+    terminator_depth_4 = TerminatorHex.TerminatorHex(4, use_suggested_heuristic=False,
+                                                     heuristic_evaluator=TerminatorHex.dijkstra_score_heuristic,
+                                                     depth_weighting=0, random_seed='random',
+                                                     do_iterative_deepening=True, max_time=None, do_transposition=True
+                                                     )
 
     # Assign move generators
     random_player_move = terminator_depth_3.random_move
@@ -124,7 +97,7 @@ if __name__ == '__main__':
     plt.errorbar(range(max_rounds + 1), random_player_mu, yerr=random_half_sigma, label=random_player_desc, fmt='o')
     plt.errorbar(range(max_rounds + 1), dijkstra3_mu, yerr=dijkstra3_half_sigma, label=dijkstra3_desc, fmt='o')
     plt.errorbar(range(max_rounds + 1), dijkstra4_mu, yerr=dijkstra4_half_sigma, label=dijkstra4_desc, fmt='o')
-    plt.title("Skill rating vs number of rounds played (2 games per round)")
+    plt.title("Skill rating vs number of rounds played (2 games per round) with ID and TT")
     plt.xlabel("Round number")
     plt.ylabel("Rating")
     plt.ylim((0, 50))

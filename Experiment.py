@@ -6,7 +6,12 @@ import TerminatorHex
 from HexBoard import HexBoard
 
 """This script calculates the rating of three Hex algorithms by playing them against each other and visualizes the 
-evolution of their ratings."""
+evolution of their ratings. Each round, each algorithm plays two games against the other two.
+This script rates the following AIs:
+    AI with random evaluation
+    AI with search depth 3 and Dijkstra evaluation
+    AI with search depth 4 and Dijkstra evaluation
+"""
 
 
 def play_1v1(player1_move, player1_rating, player2_move, player2_rating, cur_round):
@@ -18,7 +23,7 @@ def play_1v1(player1_move, player1_rating, player2_move, player2_rating, cur_rou
         player2_rating (ts.Rating): Current rating for player 2
         cur_round (int): Current iteration number. Used to determine player colors.
     """
-    board_size = 5
+    board_size = 4
 
     # Select color
     if cur_round % 2 == 0:
@@ -52,8 +57,16 @@ def play_1v1(player1_move, player1_rating, player2_move, player2_rating, cur_rou
 
 if __name__ == '__main__':
     # Initialize AI
-    terminator_depth_3 = TerminatorHex.TerminatorHex(3, do_transposition=False)
-    terminator_depth_4 = TerminatorHex.TerminatorHex(4, do_transposition=False)
+    terminator_depth_3 = TerminatorHex.TerminatorHex(3, use_suggested_heuristic=False,
+                                                     heuristic_evaluator=TerminatorHex.dijkstra_score_heuristic,
+                                                     depth_weighting=0, random_seed='random',
+                                                     do_iterative_deepening=False, max_time=None, do_transposition=False
+                                                     )
+    terminator_depth_4 = TerminatorHex.TerminatorHex(4, use_suggested_heuristic=False,
+                                                     heuristic_evaluator=TerminatorHex.dijkstra_score_heuristic,
+                                                     depth_weighting=0, random_seed='random',
+                                                     do_iterative_deepening=False, max_time=None, do_transposition=False
+                                                     )
 
     # Assign move generators
     random_player_move = terminator_depth_3.random_move
