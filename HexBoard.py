@@ -3,6 +3,8 @@ import tkinter as tk
 from itertools import groupby
 from math import cos, tan, pi
 from tkinter import messagebox
+from typing import Callable
+from copy import deepcopy
 
 from RegularPolygon import RegularPolygon
 
@@ -31,16 +33,20 @@ class HexBoard:
     # Pattern match
     PATTERN = '[a-zA-Z][0-9]'
 
-    def __init__(self, board_size, n_players=2, enable_GUI=False, interactive_text=False, ai_move=None,
-                 ai_color=None):
+    def __init__(self, board_size, n_players=2, enable_gui=False, interactive_text=False, ai_move: Callable = None,
+                 ai_color: int = None, blue_ai_move: Callable = None, red_ai_move: Callable = None):
         """Initializes the board and GUI if applicable.
         Args:
             board_size (int): Size of the hexagon grid.
             n_players (int): Number of controllable players. Can be 0, 1 or 2.
-            enable_GUI (bool, optional): Enables an interactive GUI. Default is False.
-            interactive_text (bool, optional): Enables an interactive text mode. Sets enable_GUI to False. Default is False. Maximum board size for this mode is currently 10.
-            ai_move (function): Function that generates a the moves for the AI.
-            ai_color (int): Only applicable when n_players is 1. Determines which player is controlled by ai. Default is Hexboard.RED.
+            enable_gui (bool, optional): Enables an interactive GUI. Default is False.
+            interactive_text (bool, optional): Enables an interactive text mode. Sets enable_GUI to False. Default is
+                False. Maximum board size for this mode is currently 10.
+            ai_move (Callable): Function that generates a the moves for the AI.
+            blue_ai_move, red_ai_move (Callable): Functions that generates a the moves for the blue and red AI,
+                respectively. One of these arguments is required when both players are ai.
+            ai_color (int): Only applicable when n_players is 1. Determines which player is controlled by ai. Default is
+                Hexboard.RED.
         """
         self.board = {}
         self.board_size = board_size
@@ -52,7 +58,7 @@ class HexBoard:
         self.game_over = False
         self.blue_to_move = True  # Blue is the first player
 
-        self.enable_GUI = enable_GUI
+        self.enable_GUI = enable_gui
         self.interactive_text = interactive_text
 
         if n_players in [0, 1, 2]:
@@ -66,14 +72,38 @@ class HexBoard:
             self.n_players = None
             self.ai_move = None
             raise SystemExit('Wrong number of players %d:' % n_players)
-        if n_players == 2:
+
+        if n_players == 0:
+            if blue_ai_move is None and red_ai_move is None:
+                raise SystemExit('Error with blue/red ai move.')
+            elif blue_ai_move is None:
+                self.blue_ai_move = red_ai_move
+                self.red_ai_move = red_ai_move
+            elif red_ai_move is None:
+                self.blue_ai_move = blue_ai_move
+                self.red_ai_move = blue_ai_move
+            else:
+                self.blue_ai_move = blue_ai_move
+                self.red_ai_move = red_ai_move
             self.enable_GUI = False
-            print("GUI disabled: no players.")
 
         if self.interactive_text:
             self.quit = False
             self.enable_GUI = False
             self.interactive_text_loop()
+        elif n_players == 0:
+            if self.ai_to_move():
+                if self.n_players == 0:
+                    if self.blue_to_move:
+                        x, y = self.blue_ai_move(self)
+                    else:
+                        x, y = self.red_ai_move(self)
+                else:
+                    x, y = self.ai_move(self)
+                self.place((x, y))
+        # elif not self.enable_GUI:
+            # raise SystemExit('No interface was activated')
+
 
         if self.enable_GUI:
             self.WIN_WIDTH = 2 * HexBoard.X_PADDING + (self.board_size - 1) * 1.5 * HexBoard.HEX_SIZE
@@ -87,19 +117,44 @@ class HexBoard:
             self.canvas.pack()
 
             self.canvas.bind("<Button-1>", self.on_click)
-            if self.ai_to_move():
-                x, y = self.ai_move(self)
-                self.place((x, y))
 
-            self.create_GUI()
+            self.hexagon_list = []
+            self.hexagon_id = {}  # Keys are gird coordinates, values are hexagon ids
+
+            self.create_gui()
             self.window.mainloop()
+
+    def __deepcopy__(self, memodict={}):
+        copy = HexBoard(deepcopy(self.board_size, memodict), enable_gui=False)
+        # cls = self.__class__
+        # result = cls.__new__(cls)
+        # memodict[id(self)] = result
+        # for key, value in self.__dict__.items():
+        #     if not isinstance(value, tk.Tk) or
+        #         not isinstance(value, ):
+        #         setattr(result, key, deepcopy(value, memodict))
+        return copy
+
+    def get_winning_color(self):
+        if self.check_win(HexBoard.RED):
+            return HexBoard.RED
+        elif self.check_win(HexBoard.BLUE):
+            return HexBoard.BLUE
+        else:
+            return None
 
     def interactive_text_loop(self):
         """Contains an infinite loop that reads and handles commands from the console."""
         self.quit = False
         self.print_command_help()
         if self.ai_to_move():
-            x, y = self.ai_move(self)
+            if self.n_players == 0:
+                if self.blue_to_move:
+                    x, y = self.blue_ai_move(self)
+                else:
+                    x, y = self.red_ai_move(self)
+            else:
+                x, y = self.ai_move(self)
             self.place((x, y))
             self.print_board()
 
@@ -221,7 +276,8 @@ class HexBoard:
         self.place_with_color(coordinates, color)
 
     def place_with_color(self, coordinates, color):
-        """Places a given color at given coordinates. Then, if applicable, makes an ai move. Also prints the board if in interactive text mode.
+        """Places a given color at given coordinates. Then, if applicable, makes an ai move. Also prints the board if in
+            interactive text mode.
         Args:
             coordinates (int, int): X and y coordinates to check.
             color (int): Color to place.
@@ -243,8 +299,22 @@ class HexBoard:
             # Do not exit the game to allow undoing.
         if self.interactive_text:
             self.print_board()
-        if self.ai_to_move():
-            x, y = self.ai_move(self)
+        if self.enable_GUI:
+            hexagon_id = self.hexagon_id[coordinates]
+            if self.canvas.itemcget(hexagon_id, 'fill') == 'white':
+                if color == HexBoard.BLUE:
+                    self.canvas.itemconfig(hexagon_id, fill="blue")
+                else:
+                    self.canvas.itemconfig(hexagon_id, fill="red")
+        if self.ai_to_move() and \
+                not color == HexBoard.EMPTY: # Do not make an IA move when undoing
+            if self.n_players == 0:
+                if self.blue_to_move:
+                    x, y = self.blue_ai_move(self)
+                else:
+                    x, y = self.red_ai_move(self)
+            else:
+                x, y = self.ai_move(self)
             self.place((x, y))
 
     def ai_to_move(self):
@@ -402,7 +472,7 @@ class HexBoard:
             # Do not print if there are not players
             print("It is currently " + turn_player + "\'s turn.")
 
-    def create_GUI(self):
+    def create_gui(self):
         """Binds buttons to the open window and calls Hexboard.draw_grid()
         """
         reset_button = tk.Button(self.window, text="Reset", command=self.reset_board)
@@ -429,8 +499,6 @@ class HexBoard:
                     else:
                         self.canvas.itemconfig(tk.CURRENT, fill="red")
                         self.place_with_color((x, y), HexBoard.RED)
-                    # print("You clicked on " + self.hex_to_string(self.canvas.coords(tk.CURRENT)))
-                    # Todo: update canvas after ai moves (maybe with move_list)
 
     def reset_board(self):
         """Resets board and GUI"""
@@ -448,7 +516,7 @@ class HexBoard:
                 if self.canvas.type(item) == 'polygon':
                     self.canvas.itemconfig(item, fill="white")
 
-    def undo_move(self):
+    def undo_move(self, again=True):
         """Undoes the last made move"""
         if len(self.move_list) == 0:
             if self.interactive_text:
@@ -473,6 +541,9 @@ class HexBoard:
             for item in test:
                 if self.canvas.type(item) == 'polygon':
                     self.canvas.itemconfig(item, fill="white")
+
+        if self.n_players == 1 and again:
+            self.undo_move(again=False)
 
     @staticmethod
     def hex_to_coord(coordinates):
@@ -521,7 +592,6 @@ class HexBoard:
 
     def draw_grid(self):
         """Draws a grid of hexagons"""
-        # Todo: use move_list to draw initial hexagon if ai is the first player.
         top_border = []
         bottom_border = []
         left_border = []
@@ -531,8 +601,11 @@ class HexBoard:
                 xi = HexBoard.X_PADDING + yi * HexBoard.HEX_SIZE / 2 + i * HexBoard.HEX_SIZE
                 y = HexBoard.Y_PADDING + yi * ((HexBoard.CROSS_LENGTH + HexBoard.SIDE_LENGTH) / 2)
                 hexagon = RegularPolygon(6, HexBoard.HEX_SIZE, xi, y)
-                self.canvas.create_polygon(hexagon.point_list, fill="white", outline="black")
+                hexagon_id = self.canvas.create_polygon(hexagon.point_list, fill="white", outline="black")
+                self.hexagon_list.append(hexagon_id)
                 self.canvas.create_text(xi, y, text='' + str(chr(i + 97)) + str(yi))
+
+                self.hexagon_id[(i, yi)] = hexagon_id
 
                 if yi == 0:
                     top_border.append(hexagon.point_list[-2])
@@ -560,6 +633,16 @@ class HexBoard:
                     right_border.append(hexagon.point_list[3])
                     right_border.append(hexagon.point_list[4])
                     right_border.append(hexagon.point_list[5])
+
+        if self.ai_to_move():
+            if self.n_players == 0:
+                if self.blue_to_move:
+                    x, y = self.blue_ai_move(self)
+                else:
+                    x, y = self.red_ai_move(self)
+            else:
+                x, y = self.ai_move(self)
+            self.place((x, y))
 
         self.canvas.create_line(top_border, fill='red', width=HexBoard.BORDER_WIDTH)
         self.canvas.create_line(bottom_border, fill='red', width=HexBoard.BORDER_WIDTH)
