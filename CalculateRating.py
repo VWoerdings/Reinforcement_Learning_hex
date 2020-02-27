@@ -6,8 +6,7 @@ import TerminatorHex
 from HexBoard import HexBoard
 
 """This script calculates the rating of three Hex algorithms by playing them against each other and visualizes the 
-evolution of their ratings.
-"""
+evolution of their ratings."""
 
 
 def play_1v1(player1_move, player1_rating, player2_move, player2_rating, cur_round):
