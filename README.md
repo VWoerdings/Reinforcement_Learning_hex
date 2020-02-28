@@ -22,6 +22,9 @@ This script rates the following AIs:
 ## IterativeDeepening_TranspositionTables.py
 Similar to Experiment.py, but now the AIs have iterative deepening and transposition tables enabled.
 
+## ExtraImprovements.py
+Similar to Experiment.py, but now the AI use our own improved heuristic evaluation function.
+
 # Files that are needed to run the previous scripts
 ## HexBoard.py
 Contains a class that stores, computes and displays the hex board.
