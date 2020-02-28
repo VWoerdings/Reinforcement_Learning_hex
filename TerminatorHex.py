@@ -126,8 +126,10 @@ class TerminatorHex:
         """
         alpha = float('-inf')  # initial alpha beta bounds
         beta = float('inf')
+        TT_offset = 0
         if self.do_transposition:
-            moves = order_moves_TT(hex_board, max_or_min, self.transposition_table[depth])
+            TT_offset = self.max_depth - depth # level offset in the transpostion table. This is necessary when using iterative deepening
+            moves = order_moves_TT(hex_board, max_or_min, self.transposition_table[depth + TT_offset])
         else:
             moves = hex_board.get_free_positions()
 
@@ -149,12 +151,12 @@ class TerminatorHex:
                 # new_value = minimax(deepened_board, depth - 1, 'min', self.heuristic_evaluator) # use for minimax
                 new_value, alpha, beta = alpha_beta(deepened_board, depth - 1, 'min', alpha, beta,
                                                     self.heuristic_evaluator, depth_weighting=self.depth_weighting,
-                                                    transposition_table=self.transposition_table)
+                                                    transposition_table=self.transposition_table, TT_offset=TT_offset)
                 if (new_value > value):
                     value = new_value
                     best_move = move
                     if self.do_transposition:
-                        self.transposition_table[depth][board_as_hash_key(hex_board)] = value
+                        self.transposition_table[depth + TT_offset][board_as_hash_key(hex_board)] = value
             return best_move
         elif max_or_min == 'min':  # minimise
             value = float('inf')
@@ -165,12 +167,12 @@ class TerminatorHex:
                 # new_value = minimax(deepened_board, depth - 1, 'max', self.heuristic_evaluator)
                 new_value, alpha, beta = alpha_beta(deepened_board, depth - 1, 'max', alpha, beta,
                                                     self.heuristic_evaluator, depth_weighting=self.depth_weighting,
-                                                    transposition_table=self.transposition_table)
+                                                    transposition_table=self.transposition_table, TT_offset=TT_offset)
                 if (new_value < value):
                     value = new_value
                     best_move = move
                     if self.do_transposition:
-                        self.transposition_table[depth][board_as_hash_key(hex_board)] = value
+                        self.transposition_table[depth + TT_offset][board_as_hash_key(hex_board)] = value
             return best_move
 
     def suggested_sum_scores(self, hex_board, maximiser_color):
@@ -239,7 +241,7 @@ def minimax(hex_board, depth, max_or_min, evaluator):
     return None
 
 
-def alpha_beta(hex_board, depth, max_or_min, alpha, beta, evaluator, depth_weighting=0, transposition_table=None):
+def alpha_beta(hex_board, depth, max_or_min, alpha, beta, evaluator, depth_weighting=0, transposition_table=None, TT_offset=0):
     """The minimax algorithm on the HexBoard with alpha-beta-pruning
         Args:
             hex_board (HexBoard): The current hex board.
@@ -250,6 +252,8 @@ def alpha_beta(hex_board, depth, max_or_min, alpha, beta, evaluator, depth_weigh
             depth-weighting (float): add heuristic score weight to the current evaluation depth. This can be used to
                 force immediate capitalisation on good moves
             transposition_table: use transposition table. Enter None to disable transposition table usage.
+            TT_offset (int): level index offset in the transpostion table. This is necessary when using iterative deepening,
+                i.e. when a shallower than TerminatorHex.max_depth search is performed
         Returns:
             int: maximised/minimised value according to the evaluator
     """
@@ -258,13 +262,10 @@ def alpha_beta(hex_board, depth, max_or_min, alpha, beta, evaluator, depth_weigh
     if (hex_board.check_win(hex_board.BLUE) or hex_board.check_win(hex_board.RED)):
         is_game_over = True
 
-    #print(depth, max_or_min, alpha, beta)
-    #hex_board.print_board()
-
     use_transposition = [False, True][transposition_table != None]
     if depth > 0:
         if use_transposition:
-            moves = order_moves_TT(hex_board, max_or_min, transposition_table[depth])
+            moves = order_moves_TT(hex_board, max_or_min, transposition_table[depth + TT_offset])
         else:
             moves = hex_board.get_free_positions()
     else:
@@ -280,15 +281,14 @@ def alpha_beta(hex_board, depth, max_or_min, alpha, beta, evaluator, depth_weigh
         value = float('-inf')
         for move in moves:
             deepened_board = HexBoard(hex_board.board_size, n_players=2, enable_gui=False, interactive_text=False, ai_move=None, blue_ai_move=None, red_ai_move=None, move_list=hex_board.move_list)
-            #print("b")
-            #deepened_board.print_board()
             deepened_board.set_position_auto(move)
             new_value, _, _ = alpha_beta(deepened_board, depth - 1, 'min', alpha, beta, evaluator,
-                                         depth_weighting=depth_weighting)
+                                         depth_weighting=depth_weighting, transposition_table=transposition_table,
+                                         TT_offset=TT_offset)
             if new_value > value:
                 value = new_value
                 if use_transposition:
-                    transposition_table[depth][board_as_hash_key(hex_board)] = value
+                    transposition_table[depth + TT_offset][board_as_hash_key(hex_board)] = value
             alpha = [alpha, new_value][new_value > alpha]
             if alpha >= beta:  # beta cutoff
                 # print("beta", alpha, beta)
@@ -300,11 +300,12 @@ def alpha_beta(hex_board, depth, max_or_min, alpha, beta, evaluator, depth_weigh
             deepened_board = HexBoard(hex_board.board_size, n_players=2, enable_gui=False, interactive_text=False, ai_move=None, blue_ai_move=None, red_ai_move=None, move_list=hex_board.move_list)
             deepened_board.set_position_auto(move)
             new_value, _, _ = alpha_beta(deepened_board, depth - 1, 'max', alpha, beta, evaluator,
-                                         depth_weighting=depth_weighting)
+                                         depth_weighting=depth_weighting, transposition_table=transposition_table,
+                                         TT_offset=TT_offset)
             if new_value < value:
                 value = new_value
                 if use_transposition:
-                    transposition_table[depth][board_as_hash_key(hex_board)] = value
+                    transposition_table[depth + TT_offset][board_as_hash_key(hex_board)] = value
             beta = [beta, new_value][new_value < beta]
             if alpha >= beta:  # alpha cutoff
                 # print("alpha", alpha, beta)
