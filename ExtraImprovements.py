@@ -37,8 +37,8 @@ if __name__ == '__main__':
     dijkstra4_rating = ts.Rating()
 
     random_player_desc = "Random AI"
-    dijkstra3_desc = "Search depth 3 with Dijkstra evaluation"
-    dijkstra4_desc = "Search depth 4 with Dijkstra evaluation"
+    dijkstra3_desc = "Search depth 3"
+    dijkstra4_desc = "Search depth 4"
 
     # Initialize lists to keep track of rating history
     random_player_mu = [random_player_rating.mu]
@@ -98,7 +98,7 @@ if __name__ == '__main__':
     plt.errorbar(range(max_rounds + 1), random_player_mu, yerr=random_half_sigma, label=random_player_desc, fmt='o')
     plt.errorbar(range(max_rounds + 1), dijkstra3_mu, yerr=dijkstra3_half_sigma, label=dijkstra3_desc, fmt='o')
     plt.errorbar(range(max_rounds + 1), dijkstra4_mu, yerr=dijkstra4_half_sigma, label=dijkstra4_desc, fmt='o')
-    plt.title("Skill rating vs number of rounds played (2 games per round) with ID and TT")
+    plt.title("Skill rating vs number of rounds played (2 games per round)")
     plt.xlabel("Round number")
     plt.ylabel("Rating")
     plt.ylim((0, 50))
