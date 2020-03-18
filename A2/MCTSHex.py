@@ -45,7 +45,7 @@ class MCTSHex:
     The Monte-Carlo Tree Search Hex game AI implementation.
     Args:
         N_trials (int): number of trials per tree search cycle
-        c_explore (float, [0 to 1]): the UCT formula exploration parameter
+        c_explore (float): the UCT formula exploration parameter
         expansion_fraction (float, [0 to 1]): the fraction of valid moves to expand in the child expansion step, rounded up to nearest int
         random_seed (int or "random"): a random seed, RNG state ('random' module) is restored after every MCTS_move
     """
@@ -71,32 +71,37 @@ class MCTSHex:
         """
         
         color = [HexBoard.RED, HexBoard.BLUE][board.blue_to_move] # determine color to move
+        curr_last_move = None,
+        if len(board.move_list) > 0:
+            curr_last_move = board.move_list[-1]
+            
         if cull_tree == True: # cull the previous MCTS tree
-            self.tree_head = MCTSNode(board.move_list[-1], [HexBoard.BLUE, HexBoard.RED][color == HexBoard.BLUE])
+            self.tree_head = MCTSNode(curr_last_move, [HexBoard.BLUE, HexBoard.RED][color == HexBoard.BLUE])
             # so the root becomes the last seen move, with corresponding color
         else: # attempt to find the current state in the previous MCTS tree
-            if self.tree_head == None: # tree doesn't exist
-                self.tree_head = MCTSNode(board.move_list[-1], [HexBoard.BLUE, HexBoard.RED][color == HexBoard.BLUE])
-                
-            if previous_board.move_list != board.move_list[0:len(previous_board.move_list)]: # non-matching boards, cull tree
-                self.tree_head = MCTSNode(board.move_list[-1], [HexBoard.BLUE, HexBoard.RED][color == HexBoard.BLUE])
-            else: # matching boards
-                for move in board.move_list[len(previous_board.move_list):]: # for all new moves
-                    matching_child = None
-                    for child in self.tree_head.children:
-                        if child.move == move:
-                            matching_child = child
-                    self.tree_head = matching_child
+            if self.tree_head == None or board.move_list == None or board.move_list == [] or self.previous_board == None: # tree doesn't exist or isn't useful
+                self.tree_head = MCTSNode(curr_last_move, [HexBoard.BLUE, HexBoard.RED][color == HexBoard.BLUE])
+            else:
+                if self.previous_board.move_list != board.move_list[0:len(self.previous_board.move_list)]: # non-matching boards, cull tree
+                    self.tree_head = MCTSNode(curr_last_move, [HexBoard.BLUE, HexBoard.RED][color == HexBoard.BLUE])
+                else: # matching boards
+                    for move in board.move_list[len(self.previous_board.move_list):]: # for all new moves
+                        matching_child = None
+                        for child in self.tree_head.children:
+                            if child.move == move:
+                                matching_child = child
+                        self.tree_head = matching_child
 
-                    if matching_child == None: # no matching child node found, cull tree
-                        self.tree_head = MCTSNode(board.move_list[-1], [HexBoard.BLUE, HexBoard.RED][color == HexBoard.BLUE])
+                        if matching_child == None: # no matching child node found, cull tree
+                            self.tree_head = MCTSNode(curr_last_move, [HexBoard.BLUE, HexBoard.RED][color == HexBoard.BLUE])
         
         old_state = random.getstate() # RNG mechanism: load old state after finishing move
         if self.random_seed != "random":
             random.seed(self.random_seed)
 
-        for _ in range(N_trials): # do N_trials rollouts
-            path, deepened_board, check_win = self.MCTS_select(board, self.tree_head, []) # path to leaf node
+        for _ in range(self.N_trials): # do N_trials rollouts
+            copy_board = HexBoard(board.board_size, n_players=2, enable_gui=False, interactive_text=False, ai_move=None, blue_ai_move=None, red_ai_move=None, move_list=board.move_list)
+            path, deepened_board, check_win = self.MCTS_select(copy_board, self.tree_head, []) # path to leaf node
             if check_win == None: # the leaf node is not a winning situation
                 node_to_rollout = random.choice(path[-1].children) # randomly choose a child of the leaf node to rollout
                 deepened_board.set_position_auto(node_to_rollout.move) # do the child move
@@ -108,44 +113,50 @@ class MCTSHex:
         best_move_win_prop = -1 # always get a move
         best_move = None
         for potential_move in self.tree_head.children:
-            if (potential_move.n_wins / potential_move.n_trials) > best_move_win_prop: # better move
+            ratio = 0
+            if potential_move.n_trials > 0: # avoid div by zero
+                ratio = potential_move.n_wins / potential_move.n_trials
+            if ratio > best_move_win_prop: # better move
                 best_move = potential_move # ATTN: this is an MCTSNode
                 best_move_win_prop = (potential_move.n_wins / potential_move.n_trials)
 
         if move_head:
             self.tree_head = best_move # update the tree head ATTN: does the rest of the tree go out of scope? i.e. garbage collection
-            deepened_board = self._copy_and_move(board, best_move)
+            deepened_board = self._copy_and_move(board, best_move.move)
             self.previous_board = deepened_board # update board to have matching move
         else:
             self.previous_board = board # board at current root
 
         random.setstate(old_state) # restore previous RNG state
 
+        #print(best_move.move)
+
         return best_move.move
         
-    def MCTS_select(self, board, node, path):
+    def MCTS_select(self, board, node, path, parent_node_trials=0):
         # select child nodes until leaf reached, save node path taken
-        if len(node.children == 0): # leaf node
+        if len(node.children) == 0: # leaf node
             path.append(node)
             check_win = board.get_winning_color() # check for a winning position
             if check_win == None: # no win --> expand
-                MCTS_expand(board, node)
+                self.MCTS_expand(board, node)
             # else, return, and include the winning color in the return for handling --> count as rollout
             return path, board, check_win
         else: # not a leaf node, select child
-            selection = self.child_select(board, node)
+            selection = self.child_select(board, node, parent_node_trials)
             path.append(selection)
             deepened_board = self._copy_and_move(board, selection.move)
             
-            return MCTS_select(deepened_board, selection, path) # recursive
+            return self.MCTS_select(deepened_board, selection, path, parent_node_trials=node.n_trials) # recursive
 
     def child_select(self, board, node, parent_node_trials):
         # do UCT formula
-        ln = math.log(parent_node_trials) # base = math.e
+        ln = math.log([1, parent_node_trials][parent_node_trials > 0]) # avoid log domain error by min-capping to 1, base = math.e
         highest_UCT = -1
         best_child = None # kinda unethical, picking a best child
         for child in node.children:
-            UCT_score = (child.wins / child.n_trials) + self.c_explore * math.sqrt(ln / child.n_trials)
+            denom = [1, child.n_trials][child.n_trials > 0] # avoid division by zero
+            UCT_score = (child.n_wins / denom) + self.c_explore * math.sqrt(ln / denom)
             if UCT_score > highest_UCT:
                 best_child = child
                 highest_UCT = UCT_score
@@ -194,3 +205,22 @@ class MCTSHex:
         deepened_board.set_position_auto(move)
 
         return deepened_board
+
+def get_MCTSNode_level_table(node, node_table=[], depth=0):
+    """
+    Recursively determine number of nodes at each depth starting from an MCTSNode root node.
+    Args:
+        node (MCTSNode): the root node
+        node_table (list): the table for recursion. Leave as [].
+        depth (int): current depth. Leave as 0.
+    Returns:
+        (list(int)): depth-wise node number table
+    """
+
+    if len(node_table) < depth:
+        node_table.append(0) # depth-based table, increasing index is increasing depth
+    node_table[depth] += 1
+    for child in node.children:
+        node_table = get_MCTSNode_level_table(child, node_table=node_table, depth=depth+1)
+        
+    return node_table

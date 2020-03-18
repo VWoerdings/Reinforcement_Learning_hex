@@ -1,6 +1,8 @@
 import numpy as np
+import math
 
 import TerminatorHex
+import MCTSHex
 from HexBoard import HexBoard
 
 
@@ -11,9 +13,10 @@ if __name__ == '__main__':
     n_players = 0
     ai_color = HexBoard.RED
     terminator_AI = TerminatorHex.TerminatorHex(3, True, random_seed='random', do_transposition=False)
+    MCTS_AI = MCTSHex.MCTSHex(500, math.sqrt(2))
     board = HexBoard(board_size, n_players=n_players, enable_gui=enable_GUI, interactive_text=enable_interactive_text,
-                     ai_move=terminator_AI.terminator_move, ai_color=ai_color,
-                     blue_ai_move=terminator_AI.terminator_move, red_ai_move=terminator_AI.terminator_move,
+                     ai_move=MCTS_AI.MCTS_move, ai_color=ai_color,
+                     blue_ai_move=MCTS_AI.MCTS_move, red_ai_move=MCTS_AI.MCTS_move,
                      move_list=[])
 
     if not enable_GUI and not enable_interactive_text:
