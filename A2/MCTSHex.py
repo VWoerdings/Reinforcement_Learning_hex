@@ -3,12 +3,12 @@ import math
 import random
 
 # TODO: enhancements
-# formulaic node expansion strategy
+# formulaic node expansion strategy DONE
 # frequent-visitor node re-expansion strategy
 # rollout move strategies: low-level alpha-beta, local heuristic
-# nodes per level function: memory tracing
+# nodes per level function: memory tracing DONE
 # recursive deletion in MCTSNode?
-# WinScan: scan for winning moves, don't expand further than those nodes
+# WinScan: scan for winning moves, don't expand further than those nodes DONE
 
 class MCTSNode:
     """
@@ -47,15 +47,37 @@ class MCTSHex:
     Args:
         N_trials (int): number of trials per tree search cycle
         c_explore (float): the UCT formula exploration parameter
-        expansion_fraction (float, [0 to 1]): the fraction of valid moves to expand in the child expansion step, rounded up to nearest int
+        expansion_fraction (see below): a way of determining the fraction of valid moves to expand in the tree
+            Options:
+            ('constant', float): the constant fraction of valid moves to expand in the child expansion step, rounded up to nearest int
+            ('sigmoid', float): a 1-bounded (quasi-)sigmoid, increasing to 1 towards 0 possible moves. float controls the bound slope.
+                NOTE: formula: (1 - ((n_moves - 1) / (n_moves + float))) --> check on desmos.com for clarity
+            ('lambda', Callable): provide your own function. Must have one input parameter (n_moves) and one output (fraction to expand).
+                NOTE: this is the fraction of moves to expand, not the number of actual moves to expand itself!
         random_seed (int or "random"): a random seed, RNG state ('random' module) is restored after every MCTS_move
+        enh_WinScan (bool): enable WinScan enhancement. This enhancement scans for winning(/losing) moves in the MCTS_expand function.
+            If it finds one, this move is set as the only child node, preventing further futile exploration from the parent node.
     """
-    def __init__(self, N_trials, c_explore, expansion_fraction=1, random_seed="random"):
+    def __init__(self, N_trials, c_explore, expansion_function=('constant', 1), random_seed="random", enh_WinScan=False):
         self.N_trials = N_trials
         self.c_explore = c_explore
-        self.expansion_fraction = expansion_fraction
+        
+        if type(expansion_function) != tuple and len(expansion_function) != 2:
+            raise Exception("@MCTSHex.__init__: invalid expansion_function parameter")
+        if expansion_function[0] == "constant":
+            if expansion_function[1] <= 0 or expansion_function[1] > 1:
+                raise Exception("@MCTSHex.__init__: invalid expansion_function parameter: constant fraction must be between 0 and 1")
+            self.expansion_function = lambda n_moves: expansion_function[1] * n_moves
+        elif expansion_function[0] == "sigmoid":
+            if expansion_function[1] <= 0:
+                raise Exception("@MCTSHex.__init__: invalid expansion_function parameter: sigmoid parameter too small")
+            self.expansion_function = lambda n_moves: 1 - ((n_moves - 1) / (n_moves + expansion_function[1])) 
+        elif expansion_function[0] == "lambda":
+            self.expansion_function = expansion_function[1]
+            
         self.random_seed = random_seed
         self.rollout_strategy = "random" # no options for now
+        self.enh_WinScan = enh_WinScan
 
         self.tree_head = None
         self.previous_board = None
@@ -184,12 +206,26 @@ class MCTSHex:
     def MCTS_expand(self, board, node):
         # expansion strategy for a node
         possible_moves = board.get_free_positions()
-        n_to_draft = int(math.ceil(self.expansion_fraction * len(possible_moves))) # how many moves to pick for expansion
+        exp_fraction = self.expansion_function(len(possible_moves)) # use the expansion function callable (see __init__)
+        n_to_draft = int(math.ceil(exp_fraction * len(possible_moves))) # how many moves to pick for expansion
         to_expand = random.choices(possible_moves, k=n_to_draft) # pick n_to_draft moves from list of possible moves
         color = [HexBoard.RED, HexBoard.BLUE][board.blue_to_move] # determine color to move
-        for move in to_expand:
-            new_node = MCTSNode(move, color) # create nodes for each move
-            node.addChildren(new_node) # add move node to current selected node
+        
+        if self.enh_WinScan == True: # WinScan enhancement
+            for move in possible_moves: # here, we ignore the expansion fraction because we want to find all winning moves
+                deepened_board = self._copy_and_move(board, move)
+                check_win = deepened_board.get_winning_color()
+                if check_win == color: # found a win, clear all child nodes, set winning node as only child
+                    node.children = []
+                    node.addChildren(MCTSNode(move, color))
+                    break # break out of the rest of the loop
+                
+        if self.enh_WinScan and node.children != []: # indicating that WinScan delivered a winning move
+            return
+        else:
+            for move in to_expand:
+                new_node = MCTSNode(move, color) # create nodes for each move
+                node.addChildren(new_node) # add move node to current selected node
         return
 
     def MCTS_rollout(self, board, node):
