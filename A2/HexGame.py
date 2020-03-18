@@ -9,14 +9,15 @@ from HexBoard import HexBoard
 if __name__ == '__main__':
     enable_GUI = True
     enable_interactive_text = True
-    board_size = 5
+    board_size = 6
     n_players = 0
     ai_color = HexBoard.RED
     terminator_AI = TerminatorHex.TerminatorHex(3, True, random_seed='random', do_transposition=False)
-    MCTS_AI = MCTSHex.MCTSHex(500, math.sqrt(2))
+    MCTS_AI_1 = MCTSHex.MCTSHex(5000, 10)
+    MCTS_AI_2 = MCTSHex.MCTSHex(5000, 10)
     board = HexBoard(board_size, n_players=n_players, enable_gui=enable_GUI, interactive_text=enable_interactive_text,
-                     ai_move=MCTS_AI.MCTS_move, ai_color=ai_color,
-                     blue_ai_move=MCTS_AI.MCTS_move, red_ai_move=MCTS_AI.MCTS_move,
+                     ai_move=MCTS_AI_1.MCTS_move, ai_color=ai_color,
+                     blue_ai_move=MCTS_AI_1.MCTS_move, red_ai_move=MCTS_AI_2.MCTS_move,
                      move_list=[])
 
     if not enable_GUI and not enable_interactive_text:
