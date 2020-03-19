@@ -14,9 +14,9 @@ span of games.
 """
 
 # parameters
-N_EPOCHS = 10
+N_EPOCHS = 2
 BOARD_SIZE = 6
-AI_1 = MCTSHex.MCTSHex(500, 10, expansion_function=('constant', 1), enh_FreqVisitor=False, enh_WinScan=True)
+AI_1 = MCTSHex.MCTSHex(500, 10, expansion_function=('constant', 0.7), enh_FreqVisitor=False, enh_WinScan=True)
 AI_2 = MCTSHex.MCTSHex(500, 10, expansion_function=('constant', 1))
 AI_1_MOVE = AI_1.MCTS_move
 AI_2_MOVE = AI_2.MCTS_move
@@ -114,6 +114,7 @@ if TRACK_TREE_SIZE:
 fig, ax = plt.subplots()
 ax.plot(average_advantages_p1, color='blue', label=("P1 (" + str(wins_blue) + " wins)"))
 ax.plot(average_advantages_p2, color='red', label=("P2 (" + str(wins_red) + " wins)"))
+ax.plot([0], 'g--', label="Lasting games") # ghost plot
 ax.legend()
 ax.set_title("Advantage plot")
 ax.set_xlabel("Turn (per player!)")
@@ -123,11 +124,13 @@ if PLOT_NUM_GAMES: # plot games on secondary y-axis
     ax2 = ax.twinx()
     ax2.plot(lasting_games[0::2], 'g--', label="Lasting games") # from blue player perspective
     ax2.set_ylabel("Number of remaining games at this turn (blue player)")
+    #ax2.legend()
 
 if TRACK_TREE_SIZE:
     fig2, ax_f2 = plt.subplots()
     ax_f2.plot(average_tree_sizes_p1, color='blue', label=("P1 (" + str(wins_blue) + " wins)"))
     ax_f2.plot(average_tree_sizes_p2, color='red', label=("P2 (" + str(wins_red) + " wins)"))
+    ax_f2.plot([0], 'g--', label="Lasting games") # ghost plot
     ax_f2.legend()
     ax_f2.set_title("Average tree size per turn")
     ax_f2.set_xlabel("Turn (per player!)")
@@ -137,6 +140,7 @@ if TRACK_TREE_SIZE:
         ax2_f2 = ax_f2.twinx()
         ax2_f2.plot(lasting_games[0::2], 'g--', label="Lasting games") # from blue player perspective
         ax2_f2.set_ylabel("Number of remaining games at this turn (blue player)")
+        #ax2_f2.legend()
 
 if SAVE_PLOTS:
     # systematic name
@@ -159,12 +163,12 @@ if SAVE_PLOTS:
     sysname_2 = getSystematicID(AI_2)
     
     name_infix = str(N_EPOCHS) + "_" + str(AI_1.N_trials) + sysname_1 + "_" + str(AI_2.N_trials) + sysname_2
-
+    name_A = "A" + name_infix + ".png"
+    if TRACK_TREE_SIZE:
+        name_T = "T" + name_infix + ".png"
+        
     postfix = 1
-    while True:
-        name_A = "A" + name_infix + ".png"
-        if TRACK_TREE_SIZE:
-            name_T = "T" + name_infix + ".png"
+    while True: # attempt to save
         if not os.path.isfile(SAVE_DIR + "/" + name_A):
             if TRACK_TREE_SIZE:
                 if not os.path.isfile(SAVE_DIR + "/" + name_T):
@@ -175,9 +179,9 @@ if SAVE_PLOTS:
                 fig.savefig((SAVE_DIR + "/" + name_A))
                 break
 
-        name_A = ("A" + name_infix + ".png" + "_(" + str(postfix) + ")")
+        name_A = ("A" + name_infix + "_(" + str(postfix) + ")" + ".png")
         if TRACK_TREE_SIZE:
-            name_T = ("T" + name_infix + ".png" + "_(" + str(postfix) + ")")
+            name_T = ("T" + name_infix + "_(" + str(postfix) + ")" + ".png")
         postfix += 1
         
         if postfix > 100000: # safeguard
