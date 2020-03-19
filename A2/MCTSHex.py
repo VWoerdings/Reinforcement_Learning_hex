@@ -60,7 +60,8 @@ class MCTSHex:
                 NOTE: formula: (1 - ((n_moves - 1) / (n_moves + float))) --> check on desmos.com for clarity
             ('lambda', Callable): provide your own function. Must have one input parameter (n_moves) and one output (fraction to expand).
                 NOTE: this is the fraction of moves to expand, not the number of actual moves to expand itself!
-        random_seed (int or "random"): a random seed, RNG state ('random' module) is restored after every MCTS_move
+        random_seed (int or "random"): a random seed, RNG state ('random' module) is restored after every MCTS_move if not eq. to 'random'
+            ***ATTN***: if you set a constant seed, two games with seeded AIs will always play out the same!
         enh_WinScan (bool): enable WinScan enhancement. This enhancement scans for winning(/losing) moves in the MCTS_expand function.
             If it finds one, this move is set as the only child node, preventing further futile exploration from the parent node.
         enh_FreqVisitor (bool): enable Frequent Visitor enhancement. This enhancement is useful when a reduced expansion fraction is used.
@@ -132,8 +133,8 @@ class MCTSHex:
                         if matching_child == None: # no matching child node found, cull tree
                             self.tree_head = MCTSNode(curr_last_move, [HexBoard.BLUE, HexBoard.RED][color == HexBoard.BLUE])
         
-        old_state = random.getstate() # RNG mechanism: load old state after finishing move
         if self.random_seed != "random":
+            old_state = random.getstate() # RNG mechanism: load old state after finishing move
             random.seed(self.random_seed)
 
         for t in range(self.N_trials): # do N_trials rollouts
@@ -190,7 +191,8 @@ class MCTSHex:
         else:
             self.previous_board = board # board at current root
 
-        random.setstate(old_state) # restore previous RNG state
+        if self.random_seed != "random":
+            random.setstate(old_state) # restore previous RNG state
 
         return best_move.move
         
@@ -317,6 +319,17 @@ def get_MCTSNode_level_table(node, node_table=[], depth=0):
     return node_table
 
 def print_MCTSNode_structure(node, depth=0):
+    """
+    Recursively print the tree structure starting from MCTSNode node.
+    Args:
+        node (MCTSNode): the root node
+        depth (int): current depth. Leave as 0.
+    Returns:
+        nothing
+    Side-effects:
+        prints tree
+    """
+    
     min_string = "".join(["-" for _ in range(depth)])
     print(min_string, node.color, node.move, node.n_wins, node.n_trials)
     for child in node.children:
