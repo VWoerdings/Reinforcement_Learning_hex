@@ -249,6 +249,10 @@ class MCTSHex:
         to_expand = random.sample(possible_moves, n_to_draft) # pick n_to_draft moves from list of possible moves
         # ATTN: sample without replacement!
         color = [HexBoard.RED, HexBoard.BLUE][board.blue_to_move] # determine color to move
+
+        if self.enh_EnsureTopLevelExplr == True:
+            if node == self.tree_head: # if the top-level exploration enhancement is on, and we are at the root
+                to_expand = possible_moves # then we expand all, no matter what
         
         if self.enh_WinScan == True: # WinScan enhancement
             for move in possible_moves: # here, we ignore the expansion fraction because we want to find all winning moves
