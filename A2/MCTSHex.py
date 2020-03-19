@@ -46,6 +46,12 @@ class MCTSNode:
         if color == self.color: # my color won
             self.n_wins += 1
         return
+
+    def __del__(self):
+        for child in self.children:
+            del child
+        self.children = []
+        return
             
 class MCTSHex:
     """
@@ -87,6 +93,8 @@ class MCTSHex:
             self.expansion_function = lambda n_moves: 1 - ((n_moves - 1) / (n_moves + expansion_function[1])) 
         elif expansion_function[0] == "lambda":
             self.expansion_function = expansion_function[1]
+        self.expansion_function_mode = expansion_function[0]
+        self.expansion_function_const = expansion_function[1] # might not be a constant
             
         self.random_seed = random_seed
         self.rollout_strategy = "random" # no options for now
@@ -114,13 +122,16 @@ class MCTSHex:
             curr_last_move = board.string_to_coord(board.move_list[-1])
             
         if cull_tree == True: # cull the previous MCTS tree
+            self.cull_tree()
             self.tree_head = MCTSNode(curr_last_move, [HexBoard.BLUE, HexBoard.RED][color == HexBoard.BLUE])
             # so the root becomes the last seen move, with corresponding color
         else: # attempt to find the current state in the previous MCTS tree
             if self.tree_head == None or board.move_list == None or board.move_list == [] or self.previous_board == None: # tree doesn't exist or isn't useful
+                self.cull_tree()
                 self.tree_head = MCTSNode(curr_last_move, [HexBoard.BLUE, HexBoard.RED][color == HexBoard.BLUE])
             else:
                 if self.previous_board.move_list != [board.string_to_coord(mv) for mv in board.move_list[0:len(self.previous_board.move_list)]]: # non-matching boards, cull tree
+                    self.cull_tree()
                     self.tree_head = MCTSNode(curr_last_move, [HexBoard.BLUE, HexBoard.RED][color == HexBoard.BLUE])
                 else: # matching boards
                     for move in board.move_list[len(self.previous_board.move_list):]: # for all new moves
@@ -131,6 +142,7 @@ class MCTSHex:
                         self.tree_head = matching_child
 
                         if matching_child == None: # no matching child node found, cull tree
+                            self.cull_tree()
                             self.tree_head = MCTSNode(curr_last_move, [HexBoard.BLUE, HexBoard.RED][color == HexBoard.BLUE])
         
         if self.random_seed != "random":
@@ -139,17 +151,22 @@ class MCTSHex:
 
         for t in range(self.N_trials): # do N_trials rollouts
             copy_board = HexBoard(board.board_size, n_players=2, enable_gui=False, interactive_text=False, ai_move=None, blue_ai_move=None, red_ai_move=None, move_list=board.move_list)
-            node_to_explore = self.tree_head # by default, explore from root
+            #node_to_explore = self.tree_head # by default, explore from root
             if self.enh_EnsureTopLevelExplr: # force exploration of the top-level move nodes, one below the root, i.e. all valid moves
                 if self.tree_head != None and self.tree_head.children != []: # not non-existent or a leaf node
                     list_equality = np.array([node.n_trials for node in self.tree_head.children])
                     dev_equality = list_equality - np.average(list_equality) # deviations from how many average trials per top-level node there are
                     minimums = list(np.where(dev_equality == np.amin(dev_equality))[0]) # all indices where exploration is minimum
                     index_for_exploration = random.choice(minimums) # pick a random top-level minimally explored node to explore
-                    node_to_explore = self.tree_head.children[index_for_exploration] # explore from that node instead
+                    #node_to_explore = self.tree_head.children[index_for_exploration] # explore from that node instead
                     copy_board.set_position_auto(node_to_explore.move) # update position on board
-                
-            path, deepened_board, check_win = self.MCTS_select(copy_board, node_to_explore, []) # path to leaf node
+
+            # ignore node_to_explore here to ensure correctness of memory reference
+            if self.enh_EnsureTopLevelExplr and (self.tree_head != None and self.tree_head.children != []):
+                path, deepened_board, check_win = self.MCTS_select(copy_board, self.tree_head.children[index_for_exploration], []) # path to leaf node
+            else:
+                path, deepened_board, check_win = self.MCTS_select(copy_board, self.tree_head, []) # path to leaf node
+            
             if self.enh_EnsureTopLevelExplr: # add the root node to the path in case of lower level start
                 path.insert(0, self.tree_head)
                 
@@ -303,6 +320,12 @@ class MCTSHex:
 
         return deepened_board
 
+    def cull_tree(self):
+        # remove the current tree
+        del self.tree_head
+        self.tree_head = None
+        return
+
 def get_MCTSNode_level_table(node, node_table=[], depth=0):
     """
     Recursively determine number of nodes at each depth starting from an MCTSNode root node.
@@ -314,6 +337,9 @@ def get_MCTSNode_level_table(node, node_table=[], depth=0):
         (list(int)): depth-wise node number table
     """
 
+    if depth == 0: # ensure memclear
+        node_table = []
+        
     if len(node_table) <= depth:
         node_table.append(0) # depth-based table, increasing index is increasing depth
     node_table[depth] += 1
