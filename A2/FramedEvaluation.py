@@ -14,10 +14,10 @@ span of games.
 """
 
 # parameters
-N_EPOCHS = 2
+N_EPOCHS = 50
 BOARD_SIZE = 6
-AI_1 = MCTSHex.MCTSHex(500, 10, expansion_function=('constant', 0.7), enh_FreqVisitor=False, enh_WinScan=True)
-AI_2 = MCTSHex.MCTSHex(500, 10, expansion_function=('constant', 1))
+AI_1 = MCTSHex.MCTSHex(500, 1.41, expansion_function=('constant', 1), enh_FreqVisitor=False, enh_WinScan=False)
+AI_2 = MCTSHex.MCTSHex(500, 1.41, expansion_function=('constant', 1))
 AI_1_MOVE = AI_1.MCTS_move
 AI_2_MOVE = AI_2.MCTS_move
 EVAL_MAX_CAP = BOARD_SIZE # the maximum value for the evaluation heuristic

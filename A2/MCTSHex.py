@@ -151,14 +151,14 @@ class MCTSHex:
 
         for t in range(self.N_trials): # do N_trials rollouts
             copy_board = HexBoard(board.board_size, n_players=2, enable_gui=False, interactive_text=False, ai_move=None, blue_ai_move=None, red_ai_move=None, move_list=board.move_list)
-            #node_to_explore = self.tree_head # by default, explore from root
+            node_to_explore = self.tree_head # by default, explore from root
             if self.enh_EnsureTopLevelExplr: # force exploration of the top-level move nodes, one below the root, i.e. all valid moves
                 if self.tree_head != None and self.tree_head.children != []: # not non-existent or a leaf node
                     list_equality = np.array([node.n_trials for node in self.tree_head.children])
                     dev_equality = list_equality - np.average(list_equality) # deviations from how many average trials per top-level node there are
                     minimums = list(np.where(dev_equality == np.amin(dev_equality))[0]) # all indices where exploration is minimum
                     index_for_exploration = random.choice(minimums) # pick a random top-level minimally explored node to explore
-                    #node_to_explore = self.tree_head.children[index_for_exploration] # explore from that node instead
+                    node_to_explore = self.tree_head.children[index_for_exploration] # explore from that node instead
                     copy_board.set_position_auto(node_to_explore.move) # update position on board
 
             # ignore node_to_explore here to ensure correctness of memory reference

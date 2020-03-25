@@ -10,10 +10,10 @@ if __name__ == '__main__':
     enable_GUI = True
     enable_interactive_text = True
     board_size = 6
-    n_players = 0
+    n_players = 1
     ai_color = HexBoard.RED
     terminator_AI = TerminatorHex.TerminatorHex(3, True, random_seed='random', do_transposition=False)
-    MCTS_AI_1 = MCTSHex.MCTSHex(5000, 10, expansion_function=('constant', 0.5), enh_WinScan=True, enh_EnsureTopLevelExplr=True)
+    MCTS_AI_1 = MCTSHex.MCTSHex(500, 10, expansion_function=('constant', 1), enh_WinScan=True, enh_EnsureTopLevelExplr=True)
     MCTS_AI_2 = MCTSHex.MCTSHex(500, 10, expansion_function=('constant', 0.5), enh_WinScan=True, enh_FreqVisitor=True)
     board = HexBoard(board_size, n_players=n_players, enable_gui=enable_GUI, interactive_text=enable_interactive_text,
                      ai_move=MCTS_AI_1.MCTS_move, ai_color=ai_color,
