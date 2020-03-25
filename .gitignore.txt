@@ -1,1 +1,3 @@
 __pycache__/
+*.pcy
+*/__pycache__/
