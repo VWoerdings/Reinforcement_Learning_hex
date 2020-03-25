@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import trueskill as ts
+import time
 
 import TerminatorHex
 from HexBoard import HexBoard
@@ -49,6 +50,26 @@ def play_1v1(player1_move, player1_rating, player2_move, player2_rating, cur_rou
 
     return new_player1_rating, new_player2_rating
 
+def timeEvalMoveHook(board, AI_move_func, timing_vector):
+    """
+    This function 'hijacks' a normal AI move function to evaluate the time taken for computation of that move.
+    Via functools.partial: Supply an AI move function (instantiate an AI class first) and a timing vector (must be passed by reference,
+    e.g. as numpy array!) which stores the evaluation times per turn.
+    Then the partial can be provided to the HexBoard class as a move function with only board as argument.
+    Args:
+        board (HexBoard): the current HexBoard. Can be provided by the interactive loop of the HexBoard class.
+        AI_move_func (Callable, must return HexBoard move): a Hex AI instanced move function. Partialise.
+        timing_vector (array): an array to store timing values per turn, pass by reference, i.e. as numpy array.
+    Returns:
+        (int, int): a valid HexBoard move.
+    """
+
+    start = time.time()
+    move = AI_move_func(board)
+    end = time.time()
+    turn = len(board.move_list) # determine number of moves made
+    timing_vector[turn] = (end - start) # store time taken
+    return move # return the 'hijacked' move
 
 if __name__ == '__main__':
     # Initialize AI
