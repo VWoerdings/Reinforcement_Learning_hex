@@ -2,9 +2,11 @@
 
 Each section of the assignment has its own .py file.
 
-## CalculateRating.py
-This script calculates the rating of three Hex algorithms by playing them against each other and visualizes the 
-evolution of their ratings.
+## Experiment.py
+Calculates the rating of several MCTS algorithms by playing it against an ID_TT algorithm
+
+## Tune.py
+Calculates the optimal parameters for the MCTS algorithm
 
 ## FramedEvaluation.py
 This script evaluates positional advantage according to a heuristic evaluation function (see TerminatorHex)
