@@ -22,7 +22,7 @@ def get_score(N, C_p, max_time=0, debug=False):
     elo, runtime = get_elo_and_time(N, C_p, max_time=max_time, debug=debug)
     fin = time.time()
     if debug:
-        print("One eval took %.1f minutes" % ((fin - ini)/60))
+        print("One eval took %.1f minutes" % ((fin - ini) / 60))
     if max_time != 0:
         if runtime > max_time:
             return penalty * elo / runtime
@@ -59,12 +59,12 @@ def get_elo_and_time(N, C_p, max_time=0, debug=False):
     N_ROUNDS = 12
 
     terminator = TerminatorHex.TerminatorHex(2, do_transposition=False, max_time=max_time)
-    random_player_move = terminator.terminator_move
+    terminator_player_move = terminator.terminator_move
 
     MCTS_AI = MCTSHex.MCTSHex(N, C_p, expansion_function=('constant', 1), random_seed="random", enh_WinScan=False,
                               enh_FreqVisitor=False, enh_EnsureTopLevelExplr=False)
 
-    random_rating = ts.Rating()
+    terminator_rating = ts.Rating()
     mcts_rating = ts.Rating()
 
     average_time = []
@@ -77,13 +77,13 @@ def get_elo_and_time(N, C_p, max_time=0, debug=False):
 
         if game % 2 == 0:
             mcts_color = HexBoard.BLUE
-            random_color = HexBoard.RED
+            terminator_color = HexBoard.RED
             blue_ai_move = partial_move
-            red_ai_move = random_player_move
+            red_ai_move = terminator_player_move
         else:
             mcts_color = HexBoard.RED
-            random_color = HexBoard.BLUE
-            blue_ai_move = random_player_move
+            terminator_color = HexBoard.BLUE
+            blue_ai_move = terminator_player_move
             red_ai_move = partial_move
 
         board = HexBoard(BOARD_SIZE, n_players=0, enable_gui=False,
@@ -92,19 +92,21 @@ def get_elo_and_time(N, C_p, max_time=0, debug=False):
         winning_color = board.get_winning_color()
 
         if winning_color == mcts_color:
-            mcts_rating, random_rating = ts.rate_1vs1(mcts_rating, random_rating)
-        elif winning_color == random_color:
-            random_rating, mcts_rating = ts.rate_1vs1(random_rating, mcts_rating)
-
-        if debug:
-            print("Average time was %.3f seconds" % np.mean(time_array[time_array != 0]))
+            mcts_rating, terminator_rating = ts.rate_1vs1(mcts_rating, terminator_rating)
+        elif winning_color == terminator_color:
+            terminator_rating, mcts_rating = ts.rate_1vs1(terminator_rating, mcts_rating)
 
         if mcts_color == HexBoard.BLUE:
             time_array = time_array[0::2]
         else:
             time_array = time_array[1::2]
+
+        if debug:
+            print("Average time was %.3f seconds" % np.mean(time_array))
         average_time.append(np.mean(time_array))
-    return mcts_rating.mu - random_rating.mu, np.mean(average_time)
+        mcts_trueskill = mcts_rating.mu-3*mcts_rating.sigma
+        terminator_trueskill = terminator_rating.mu-3*terminator_rating.sigma
+    return mcts_trueskill - terminator_trueskill, np.mean(average_time)
 
 
 def insert_score(history, N, C_p, score, debug=False, check_top=False, K=0):
@@ -115,10 +117,6 @@ def insert_score(history, N, C_p, score, debug=False, check_top=False, K=0):
         prev = history[:sorted_index, :]
         mid = np.asarray([N, C_p, score]).reshape((1, 3))
         post = history[sorted_index:, :]
-        if debug:
-            print("prev shape %s" % (prev.shape,))
-            print("mid shape %s" % (mid.shape,))
-            print("post shape %s" % (post.shape,))
         if sorted_index == 0:
             history = np.concatenate((mid, post), axis=0)
         elif sorted_index == len(history):
@@ -134,40 +132,60 @@ def insert_score(history, N, C_p, score, debug=False, check_top=False, K=0):
 
 
 if __name__ == '__main__':
-    N_min = 100
-    N_max = 1000
-    C_p_min = 0
-    C_p_max = 5
+    np.set_printoptions(precision=3, suppress=True)
+    begin = time.time()
+
+    N_min = 1000
+    N_max = 2500
+    C_p_min = 0.5
+    C_p_max = 4
 
     top_K = 5
-    initial_tries = 3
+    initial_tries_N = 3
+    initial_tries_C_p = 3
     MAX_TIME = 2
 
     debug = True
 
     history = []
-    for C_p in np.linspace(C_p_min, C_p_max, num=initial_tries):
-        for N in np.rint(np.linspace(N_min, N_max, num=initial_tries)).astype(np.int64):
+    evaluations = 0
+    max_evaluations = 100
+    for C_p in np.linspace(C_p_min, C_p_max, num=initial_tries_C_p):
+        for N in np.rint(np.linspace(N_min, N_max, num=initial_tries_N)).astype(np.int64):
             score = get_score(N, C_p, max_time=MAX_TIME, debug=debug)
             history = insert_score(history, N, C_p, score, debug)
+            evaluations += 1
 
-    is_top = True
-    C_p_convergence = 0.1
-    iterations = 0
-    max_iterations = 100
-    while is_top and (iterations < max_iterations):
+    # is_top = True
+    while (evaluations < max_evaluations):
         top_N = history[-top_K:, 0]
+        mean_N = np.mean(top_N)
+        std_N = np.std(top_N)
+
         top_C_p = history[-top_K:, 1]
-        top_scores = history[-top_K:, 2]
+        mean_C_p = np.mean(top_C_p)
+        std_C_p = np.std(top_C_p)
 
-        new_N = int(np.dot(top_N, top_scores) / np.sum(top_scores))
-        new_C_p = int(np.dot(top_C_p, top_scores) / np.sum(top_scores))
+        # convergence_factor = 1  #evaluations/max_evaluations
+        new_Ns = np.rint(np.random.normal(mean_N, std_N, initial_tries_N)).astype(np.int64)
+        new_C_ps = np.random.normal(mean_C_p, std_C_p, initial_tries_C_p)
 
-        score = get_score(new_N, new_C_p, max_time=MAX_TIME, debug=debug)
-        history, is_top = insert_score(history, new_N, new_C_p, score, debug, True, top_K)
-        print(history)
-        iterations += 1
+        # is_top = False
+        for C_p in new_C_ps:
+            for N in new_Ns:
+                score = get_score(N, C_p, max_time=MAX_TIME, debug=debug)
+                history, cur_is_top = insert_score(history, N, C_p, score, debug, check_top=True, K=top_K)
+                # is_top = is_top or cur_is_top  # Checks if one of the new points is in the top K results
+                if debug:
+                    print(history)
+                evaluations += 1
+        if debug:
+            print(history)
+            print("Performed %d evaluations" % evaluations)
     if debug:
-        print("Done after %d iterations" % iterations)
-
+        print("Done after %d evaluations" % evaluations)
+    end = time.time()
+    if debug:
+        print("Total runtime is %.3f minutes" % ((end-begin)/60))
     print(history)
+
