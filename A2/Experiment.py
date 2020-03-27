@@ -161,8 +161,8 @@ if __name__ == '__main__':
                 rating_list.append(terminator_rating.mu)
 
             results = np.append(results, np.asarray([rating_list]), axis=0)
-            results_backup[:, numm] = np.asarray([rating_list])
-            numm += 1
+            # results_backup[:, numm] = np.asarray([rating_list])
+            # numm += 1
             print(rating_list)
 
     idtt_depths = [2, 3]
