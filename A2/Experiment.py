@@ -119,9 +119,9 @@ if __name__ == '__main__':
     BOARD_SIZE = 6
 
     results = np.asarray([list(range(MAX_GAMES))])
-    results_backup = np.ones((MAX_GAMES, 4))
-    results_backup[:, 0] = results
-    numm = 1
+    # results_backup = np.ones((MAX_GAMES, 4))
+    # results_backup[:, 0] = results
+    # numm = 1
     for depth in idtt_depths:
         for N, C_p in mcts_settings:
             print("Currently playing search depth %d vs N=%d, C_p=%.3f" % (depth, N, C_p))
