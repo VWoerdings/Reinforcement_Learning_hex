@@ -7,7 +7,7 @@ import numpy as np
 
 class BreakoutNetwork:
     def __init__(self, frame_size, resize_factor, n_actions, loss_function, optimiser):
-        self.original_frame_size = original_frame_size
+        self.original_frame_size = frame_size
         self.resize_factor = resize_factor
         self.reduced_frame_size = np.array([self.original_frame_size[0] * resize_factor,
                                             self.original_frame_size[1] * resize_factor,
@@ -30,12 +30,19 @@ class BreakoutNetwork:
         self.model.compile(loss=loss_function, optimizer=optimiser)
 
     def predictQVectorFromFrame(self, frames):
+        if len(frames.shape) == 3:
+            frames = np.reshape(frames, (1, frames.shape[0], frames.shape[1], frames.shape[2])) # single-image batch
         resized_images = tf.image.resize(frames, self.reduced_frame_size[0:2]) # resize images first
         return self.model.predict(resized_images)
         #values = frame
         #for layer in self.model._layers:
         #    values = layer(values) # propagate through the layer
         #return values # return the values in the output layer after propagating through all layers
+
+    def fit(self, input_frames, output_matrix, batch_size, epochs):                
+        resized_images = tf.image.resize(input_frames, self.reduced_frame_size[0:2]) # resize images first
+        self.model.fit(input_frames, output_matrix, batch_size=batch_size, epochs=epochs)
+        return
 
 class BreakoutExperienceBuffer:
     def __init__(self, max_size):
@@ -72,14 +79,16 @@ class BreakoutDQNLearner:
 
         self.game = gym.make('Breakout-v0')
         self.current_frame = self.game.reset()
+        self.current_frame, _, self.game_over, _ = self.game.step(self.game.action_space.sample())
         self.game_over = False
         self.last_frame_time = 0
         self.action_space_size = self.game.action_space.n
 
         # target and prediction networks separated to reduce target instability
-        sgd = optimizers.SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True) # stochastic gradient descent
-        self.target_network = BreakoutNetwork(frame.shape, 1, self.action_space_size, "mean_squared_error", sgd)
-        self.prediction_network = BreakoutNetwork(frame.shape, 1, self.action_space_size, "mean_squared_error", sgd)
+        sgd = tf.optimizers.SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True) # stochastic gradient descent
+        rms = tf.optimizers.RMSprop(learning_rate=0.001, rho=0.9)
+        self.target_network = BreakoutNetwork(self.current_frame.shape, 1, self.action_space_size, "mean_squared_error", rms)
+        self.prediction_network = BreakoutNetwork(self.current_frame.shape, 1, self.action_space_size, "mean_squared_error", rms)
 
         self.buffer_indices = {'start_frame': 0, 'action': 1, 'reward': 2, 'game_over': 3, 'result_frame': 4}
 
@@ -96,7 +105,7 @@ class BreakoutDQNLearner:
         return action
 
     def takeActionAndStoreExperience(self, do_not_store=False, strategy='epsilon-greedy', **kwargs):
-        action = self.getMostPrudentAction(strategy, kwargs)
+        action = self.getMostPrudentAction(strategy, **kwargs)
         frame, reward, game_over, _ = self.game.step(action)
 
         tup = (self.current_frame, action, reward, game_over, frame)
@@ -106,10 +115,11 @@ class BreakoutDQNLearner:
         self.game_over = game_over
         if self.game_over:
             self.game.reset() # reset the game completely
+            self.current_frame, _, self.game_over, _ = self.game.step(self.game.action_space.sample()) # prevent getting stuck in zero-moves
         return tup
 
-    def updateNetwork(use_replay_buffer=True, nsamples_replay_buffer=1, train_batch_size='auto', epochs=1, experiences=None):
-        if train_batch_size = 'auto':
+    def updateNetwork(self, use_replay_buffer=True, nsamples_replay_buffer=1, train_batch_size='auto', epochs=1, experiences=None):
+        if train_batch_size == 'auto':
             train_batch_size = nsamples_replay_buffer
         if use_replay_buffer:
             experience_batch = self.buffer.sample(nsamples_replay_buffer) # throws exception: buffer content too small
@@ -123,7 +133,7 @@ class BreakoutDQNLearner:
             target_matrix[i, exp[self.buffer_indices['action']]] += exp[self.buffer_indices['reward']] # update with reward associated with that buffer
             input_frames[i] = exp[self.buffer_indices['start_frame']]
 
-        self.prediction_network.fit(input_frames, target_matrix, batch_size=train_batch_size, epochs=epochs)
+        self.prediction_network.fit(np.array(input_frames), target_matrix, train_batch_size, epochs)
         self.n_updates_count += 1
         if self.n_updates_count % self.cycles_per_network_transfer == 0: # transfer prediction network to train network
             self.target_network.model.set_weights(self.prediction_network.model.get_weights())
@@ -147,35 +157,51 @@ class BreakoutDQNLearner:
             chosen_index = random.choice(max_values) # pick one of the max values at random
             return chosen_index
         else: # pick random for exploration
-            return random.randrange(Q_vector.shape[0])
+            return random.randrange(Q_vector.shape[1])
         pass
 
     def _selectRandom(self, Q_vector):
         # Select a random action
         # Q_vector contains the predicted Q-value (value function) for each action
         # Returns an integer corresponding to the chosen action
-        return random.randrange(Q_vector.shape[0])
+        return random.randrange(Q_vector.shape[1])
         
 
 if __name__ == "__main__":
-    Breakout_game = gym.make('Breakout-v0')
-    frame = Breakout_game.reset()
-    Breakout_game.render()
-    frame_time = 0.05 # minimum time per frame in seconds
+    BUFFER_SIZE = 400
+    CYCLES_FOR_TRANSFER = 12
+    N_ACTIONS_PER_PLAY_CYCLE = 10
+    N_SAMPLES_PER_LEARN_CYCLE = 40
+    N_EPOCHS_PER_LEARN_CYCLE = 5
+    N_CYCLES_PERFORMANCE_EVAL = 0
+    N_EPOCHS_MASTER = 250
+    EPSILON = 0.8
+    FRAME_RATE = 0.02
+    
+    learner = BreakoutDQNLearner(BUFFER_SIZE, CYCLES_FOR_TRANSFER)
+    for i in range(BUFFER_SIZE): # buffer filling
+        print("Filling buffer: cycle", i + 1)
+        learner.takeActionAndStoreExperience(epsilon=EPSILON, strategy='random')
+    #learner.render(FRAME_RATE)
+    for i in range(N_EPOCHS_MASTER):
+        print("Master epoch", i + 1)
+        for _ in range(N_ACTIONS_PER_PLAY_CYCLE):
+            learner.takeActionAndStoreExperience(epsilon=EPSILON)
+            #learner.render(FRAME_RATE)
+        learner.updateNetwork(nsamples_replay_buffer=N_SAMPLES_PER_LEARN_CYCLE, epochs=N_EPOCHS_PER_LEARN_CYCLE)
+        total_score = 0
+        state = learner.game.clone_full_state()
+        for _ in range(N_CYCLES_PERFORMANCE_EVAL):
+            learner.game.reset()
+            tup = learner.takeActionAndStoreExperience(epsilon=EPSILON, do_not_store=True)
+            total_score += tup[learner.buffer_indices['reward']]
+        learner.game.restore_full_state(state)
+        print("Total score for master epoch:", total_score)
 
-    game_over = False
-    while not game_over:
-        time_start = time.time()
-        action = Breakout_game.action_space.sample()
-        print("Action:", Breakout_game.get_action_meanings()[action])
-        frame, reward, game_over, _ = Breakout_game.step(action)
-        print("Reward:", reward)
-        Breakout_game.render()
-
-        time.sleep(max(0, (frame_time - (time.time() - time_start))))
-
-    print(frame.shape)
-    bn = BreakoutNetwork(frame.shape, Breakout_game.action_space.n)
-    print(bn.model.__dict__)
-    for layer in bn.model._layers:
-        print(layer.variables)
+    learner.game.reset()
+    total_score = 0
+    for _ in range(300):
+        tup = learner.takeActionAndStoreExperience(epsilon=EPSILON, do_not_store=True)
+        learner.render(FRAME_RATE)
+        total_score += tup[learner.buffer_indices['reward']]
+    print("Final score", total_score)
