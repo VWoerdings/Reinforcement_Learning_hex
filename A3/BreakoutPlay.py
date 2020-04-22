@@ -5,6 +5,23 @@ import random
 import time
 import numpy as np
 
+# RL Assigment 3: DQN Learning; Part 2: Atari Breakout
+# April 2020
+# Abishek Ekaanth, Virgil Woerdings, Ruben Walen
+#
+# TODO:
+# discount factor DONE
+# kernel size, stride checking DONE
+# check parameters
+# ...
+#
+# ENHANCEMENTS:
+# trajectories buffer: instead of storing individual samples...
+#... store whole-game trajectories. Backpropagate (discounted) rewards...
+#... along the game trajectory when a positive reward is received
+# main/positive buffer split: always attempt to train network with a certain...
+#... proportion of positive reward samples kept separately in the buffer
+
 class BreakoutNetwork:
     def __init__(self, frame_size, resize_factor, n_actions, loss_function, optimiser):
         self.original_frame_size = frame_size
@@ -15,16 +32,22 @@ class BreakoutNetwork:
         self.n_actions = n_actions
 
         # construct the network
-        self.network_params = [(32, (3, 3))] # convolutional feature dimensionality (output) and stride: every entry = 1 conv. layer
+        self.network_params = [(32, (3, 3), (1, 1)), (64, (3, 3), (1, 1)), (64, (3, 3), (1, 1))] # convolutional feature dimensionality (output) and stride: every entry = 1 conv. layer
+        # [nfilters, (kernel_size_X, kernel_size_Y), (stride_X, stride_Y)]
+        # previous tries: [32, (3, 3), (1, 1)]
+        # [(32, (3, 3), (1, 1)), (64, (3, 3), (1, 1)), (64, (3, 3), (1, 1))]
+        self.initialiser = tf.keras.initializers.RandomUniform(minval=-0.0002, maxval=0.0005, seed=None) # a weights initialiser: this prevents high initial Q-values
 
         model = models.Sequential()
         for i, entry in enumerate(self.network_params):
-            model.add(layers.Conv2D(entry[0], entry[1], activation='linear', input_shape=self.reduced_frame_size)) # convolutional layer
+            model.add(layers.Conv2D(entry[0], entry[1], strides=entry[2], activation='linear',
+                                    input_shape=self.reduced_frame_size, kernel_initializer=self.initialiser)) # convolutional layer
             model.add(layers.MaxPooling2D((2, 2))) # max pooling to lower image size
         
         model.add(layers.Flatten()) # flatten feature maps
-        model.add(layers.Dense(self.network_params[-1][0], activation='relu')) # first dense layer: connect to last conv. layer
-        model.add(layers.Dense(n_actions)) # second dense layer: output actions
+        model.add(layers.Dense(self.network_params[-1][0],
+                               activation='relu', kernel_initializer=self.initialiser)) # first dense layer: connect to last conv. layer
+        model.add(layers.Dense(n_actions, activation='linear', kernel_initializer=self.initialiser)) # second dense layer: output actions
 
         self.model = model
         self.model.compile(loss=loss_function, optimizer=optimiser)
@@ -70,27 +93,91 @@ class BreakoutExperienceBuffer:
         self.buffer = []
         return
 
+class BreakoutExperienceTrajectoryBuffer:
+    def __init__(self, max_size_games):
+        self.max_size = max_size_games
+        self.trajectories = []
+        self.total_samples = 0
+        self.buffer_size_per_trajectory = []
+
+    def putNewGame(self):
+        # Put an empty new game in the trajectories buffer
+        # Return the index of the new game in the trajectories buffer list
+        if len(self.trajectories) < self.max_size:
+            self.trajectories.append([]) # add empty game list
+            self.buffer_size_per_trajectory.append(0)
+            return (len(self.trajectories) - 1)
+        else:
+            to_replace = random.randrange(self.max_size)
+            self.total_samples -= len(self.trajectories[to_replace])
+            self.trajectories[to_replace] = [] # random replacement
+            self.buffer_size_per_trajectory[to_replace] = 0
+            return to_replace
+
+    def addExperienceToGame(self, experience, game_index, backpropagation_discount=1.00):
+        # Put an experience sample in a game trajectory (append at end).
+        # If the reward for that experience is positive, backpropagate the reward along the trajectory.
+        if game_index >= len(self.trajectories):
+            raise IndexError("@BreakoutExperienceTrajectoryBuffer.addExperienceToGame: game index out of range")
+
+        self.trajectories[game_index].append(experience)
+        reward = experience[2] # index 2 associated with reward
+        if reward > 0: # backpropagate positive rewards along the trajectory TODO: cache discounted exponentials?
+            for i, exp in reversed(list(enumerate(self.trajectories[game_index]))[0:-1]):
+                discounted_reward = (backpropagation_discount)**(i + 1) * reward
+                self.trajectories[game_index][i] += discounted_reward # increase associated reward
+        self.total_samples += 1
+        self.buffer_size_per_trajectory[game_index] += 1
+        return
+
+    def sample(self, n_samples, equalise_over_games=False):
+        # Sample n_samples from the buffer, if equalise_over_games is True: sample with equal probability over games instead of over total samples
+        samples = []
+        if not equalise_over_games:
+            for _ in range(n_samples):
+                sample_index = random.randrange(self.total_samples)
+                game_index = None
+                current_total = 0
+                for i in range(len(self.trajectories)):
+                    ingame_index = sample_index - current_total
+                    current_total += self.buffer_size_per_trajectory[i]
+                    if sample_index < current_total: # the index is in this game
+                        game_index = i
+                        break
+                samples.append(self.trajectories[game_index][ingame_index])                
+        else:
+            for _ in range(n_samples):
+                game_index = random.randrange(len(self.trajectories))
+                ingame_index = random.randrange(self.buffer_size_per_trajectory[game_index])
+                samples.append(self.trajectories[game_index][ingame_index])
+        return samples
+
 class BreakoutDQNLearner:
-    def __init__(self, buffer_size, cycles_per_network_transfer):
+    def __init__(self, buffer_size, cycles_per_network_transfer, discount_factor):
         self.buffer = BreakoutExperienceBuffer(buffer_size)
         self.n_updates_count = 0 # how many times the network(s) was updated
         self.cycles_per_network_transfer = cycles_per_network_transfer # after how many update cylces we update the target network...
+        self.discount_factor = discount_factor
         #... with the prediction network weights
 
         self.game = gym.make('Breakout-v0')
         self.current_frame = self.game.reset()
-        self.current_frame, _, self.game_over, _ = self.game.step(self.game.action_space.sample())
+        self.current_frame, _, self.game_over, _ = self.game.step(random.choice(range(1, self.game.action_space.n)))
         self.game_over = False
         self.last_frame_time = 0
         self.action_space_size = self.game.action_space.n
 
         # target and prediction networks separated to reduce target instability
         sgd = tf.optimizers.SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True) # stochastic gradient descent
-        rms = tf.optimizers.RMSprop(learning_rate=0.001, rho=0.9)
+        rms = tf.optimizers.RMSprop(learning_rate=0.01, rho=0.9) # RMSprop
         self.target_network = BreakoutNetwork(self.current_frame.shape, 1, self.action_space_size, "mean_squared_error", rms)
         self.prediction_network = BreakoutNetwork(self.current_frame.shape, 1, self.action_space_size, "mean_squared_error", rms)
 
         self.buffer_indices = {'start_frame': 0, 'action': 1, 'reward': 2, 'game_over': 3, 'result_frame': 4}
+
+        print(">BreakoutDQNLearner: Q check (initial frame)")
+        print(self.target_network.predictQVectorFromFrame(self.current_frame))
+        print("Actions:", self.game.get_action_meanings())
 
     def getMostPrudentAction(self, strategy='epsilon-greedy', **kwargs):
         # Use a strategy function to determine the most prudent action given the current frame (state) and environment
@@ -114,8 +201,7 @@ class BreakoutDQNLearner:
         self.current_frame = frame
         self.game_over = game_over
         if self.game_over:
-            self.game.reset() # reset the game completely
-            self.current_frame, _, self.game_over, _ = self.game.step(self.game.action_space.sample()) # prevent getting stuck in zero-moves
+            self.resetAndRandomNonZeroMove()
         return tup
 
     def updateNetwork(self, use_replay_buffer=True, nsamples_replay_buffer=1, train_batch_size='auto', epochs=1, experiences=None):
@@ -129,8 +215,11 @@ class BreakoutDQNLearner:
         target_matrix = np.zeros((nsamples_replay_buffer, self.action_space_size)) # matrix of target Q values
         input_frames = [None for _ in range(nsamples_replay_buffer)] # the frames to use as inputs
         for i, exp in enumerate(experience_batch):
-            target_matrix[i, :] = self.target_network.predictQVectorFromFrame(exp[self.buffer_indices['result_frame']]) # from frame resulting from action
-            target_matrix[i, exp[self.buffer_indices['action']]] += exp[self.buffer_indices['reward']] # update with reward associated with that buffer
+            target_matrix[i, :] = self.prediction_network.predictQVectorFromFrame(exp[self.buffer_indices['start_frame']]) # no loss for non-represented action
+            if exp[self.buffer_indices['game_over']] == False: # not a game over state - add the max Q of the next frame to the action taken
+                max_Q = np.max(self.target_network.predictQVectorFromFrame(exp[self.buffer_indices['result_frame']])) # from frame resulting from action
+                target_matrix[i, exp[self.buffer_indices['action']]] += self.discount_factor * max_Q
+            target_matrix[i, exp[self.buffer_indices['action']]] += exp[self.buffer_indices['reward']] # update with reward associated with that action in that sample
             input_frames[i] = exp[self.buffer_indices['start_frame']]
 
         self.prediction_network.fit(np.array(input_frames), target_matrix, train_batch_size, epochs)
@@ -165,22 +254,32 @@ class BreakoutDQNLearner:
         # Q_vector contains the predicted Q-value (value function) for each action
         # Returns an integer corresponding to the chosen action
         return random.randrange(Q_vector.shape[1])
+
+    def resetAndRandomNonZeroMove(self):
+        self.game.reset() # reset the game completely
+        self.current_frame, _, self.game_over, _ = self.game.step(random.choice(range(1, self.game.action_space.n))) # prevent getting stuck in zero-moves
+        return
         
 
 if __name__ == "__main__":
-    BUFFER_SIZE = 400
-    CYCLES_FOR_TRANSFER = 12
+    # DQN Learning on Atari Breakout
+    BUFFER_SIZE = 1000
+    CYCLES_FOR_TRANSFER = 10
     N_ACTIONS_PER_PLAY_CYCLE = 10
-    N_SAMPLES_PER_LEARN_CYCLE = 40
+    N_SAMPLES_PER_LEARN_CYCLE = 25
     N_EPOCHS_PER_LEARN_CYCLE = 5
     N_CYCLES_PERFORMANCE_EVAL = 0
-    N_EPOCHS_MASTER = 250
-    EPSILON = 0.8
+    N_EPOCHS_MASTER = 2500
+    EPSILON = 0.7
+    DISCOUNT = 1.00
     FRAME_RATE = 0.02
+    #np.random.seed(333)
+    #random.seed(333)
     
-    learner = BreakoutDQNLearner(BUFFER_SIZE, CYCLES_FOR_TRANSFER)
+    learner = BreakoutDQNLearner(BUFFER_SIZE, CYCLES_FOR_TRANSFER, DISCOUNT)
+    print(">__main__: Filling buffer (samples:", BUFFER_SIZE, "total)")
     for i in range(BUFFER_SIZE): # buffer filling
-        print("Filling buffer: cycle", i + 1)
+        #print("Filling buffer: cycle", i + 1)
         learner.takeActionAndStoreExperience(epsilon=EPSILON, strategy='random')
     #learner.render(FRAME_RATE)
     for i in range(N_EPOCHS_MASTER):
@@ -192,16 +291,31 @@ if __name__ == "__main__":
         total_score = 0
         state = learner.game.clone_full_state()
         for _ in range(N_CYCLES_PERFORMANCE_EVAL):
-            learner.game.reset()
+            learner.resetAndRandomNonZeroMove()
             tup = learner.takeActionAndStoreExperience(epsilon=EPSILON, do_not_store=True)
             total_score += tup[learner.buffer_indices['reward']]
         learner.game.restore_full_state(state)
         print("Total score for master epoch:", total_score)
 
-    learner.game.reset()
+    # Test the AI in NUM_GAMES games
+    NUM_GAMES = 4
+    learner.resetAndRandomNonZeroMove()
     total_score = 0
-    for _ in range(300):
-        tup = learner.takeActionAndStoreExperience(epsilon=EPSILON, do_not_store=True)
+    game_score = 0
+    games_completed = 0
+    complete = False
+    while not complete:
+        tup = learner.takeActionAndStoreExperience(epsilon=0.9, do_not_store=True)
+        #print("Action", tup[learner.buffer_indices['action']])
         learner.render(FRAME_RATE)
         total_score += tup[learner.buffer_indices['reward']]
-    print("Final score", total_score)
+        game_score += tup[learner.buffer_indices['reward']]
+        if tup[learner.buffer_indices['game_over']] == True:
+            print("Game finished; score:", game_score)
+            game_score = 0
+            games_completed += 1
+            if games_completed >= NUM_GAMES:
+                complete = True
+            else:
+                learner.resetAndRandomNonZeroMove()
+    print("Average score", str((total_score / NUM_GAMES)))
