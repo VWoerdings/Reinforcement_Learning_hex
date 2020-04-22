@@ -136,7 +136,7 @@ class BreakoutDQNLearner:
             target_matrix[i, :] = self.prediction_network.predictQVectorFromFrame(exp[self.buffer_indices['start_frame']]) # no loss for non-represented action
             if exp[self.buffer_indices['game_over']] == False: # not a game over state - add the max Q of the next frame to the action taken
                 max_Q = np.max(self.target_network.predictQVectorFromFrame(exp[self.buffer_indices['result_frame']])) # from frame resulting from action
-                target_matrix[i, exp[self.buffer_indices['action']]] += self.discount_factor * max_Q
+                target_matrix[i, exp[self.buffer_indices['action']]] = self.discount_factor * max_Q # replace by max_Q target
             target_matrix[i, exp[self.buffer_indices['action']]] += exp[self.buffer_indices['reward']] # update with reward associated with that action in that sample
             input_frames[i] = exp[self.buffer_indices['start_frame']]
 
