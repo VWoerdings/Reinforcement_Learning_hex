@@ -74,7 +74,7 @@ class BreakoutExperiencePosisplitBuffer:
         if len(self.main_buffer) <= 0:
             raise Exception("@BreakoutExperiencePosisplitBuffer.sample: the main buffer is empty!")
         
-        n_positive_samples = int(ratio_allocated_to_positive * n_samples)
+        n_positive_samples = int(part_allocated_to_positive * n_samples)
         n_main_samples = n_samples - n_positive_samples
         positive_sampling_deficit = len(self.positive_buffer) - n_positive_samples
         if positive_sampling_deficit < 0:
@@ -89,7 +89,8 @@ class BreakoutExperiencePosisplitBuffer:
         experience_choices_positive = []
         if n_positive_samples > 0:
             experience_choices_positive = random.sample(self.positive_buffer, n_positive_samples)
-        return experience_choices_main.extend(experience_choices_positive) # not shuffled!
+        experience_choices_main.extend(experience_choices_positive) # not shuffled!
+        return experience_choices_main
 
     def clear(self):
         # Wipe the buffer(s)
