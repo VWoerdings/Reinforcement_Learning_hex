@@ -75,7 +75,7 @@ class BreakoutNetwork:
         return
 
 class BreakoutDQNLearner:
-    def __init__(self, buffer_size, cycles_per_network_transfer, discount_factor, load_weights=None):
+    def __init__(self, buffer_size, cycles_per_network_transfer, discount_factor, load_weights=None, game_seed=None):
         self.buffer = BreakoutExperienceBuffer(buffer_size)
         self.n_updates_count = 0 # how many times the network(s) was updated
         self.cycles_per_network_transfer = cycles_per_network_transfer # after how many update cylces we update the target network...
@@ -83,6 +83,7 @@ class BreakoutDQNLearner:
         #... with the prediction network weights
 
         self.game = gym.make('Breakout-v0')
+        self.game.seed(game_seed)
         self.current_frame = self.game.reset()
         self.current_frame, _, self.game_over, _ = self.game.step(random.choice(range(1, self.game.action_space.n)))
         self.game_over = False
@@ -150,13 +151,14 @@ class BreakoutDQNLearner:
             self.target_network.model.set_weights(self.prediction_network.model.get_weights())
         return
 
-    def render(self, frame_rate_mills):
+    def render(self, frame_rate_mills, disable=False):
         # Wait for a maximum of frame_rate_mills milliseconds per render cycle, draw the game screen with most recent action
-        time_now = time.time()
-        frame_wait = max(0, (frame_rate_mills - (time_now - self.last_frame_time)))
-        time.sleep(frame_wait)
-        self.last_frame_time = time_now
-        self.game.render()
+        if not disable:
+            time_now = time.time()
+            frame_wait = max(0, (frame_rate_mills - (time_now - self.last_frame_time)))
+            time.sleep(frame_wait)
+            self.last_frame_time = time_now
+            self.game.render()
         return
     
     def _selectEpsilonGreedy(self, Q_vector, epsilon=0.8):
@@ -195,25 +197,28 @@ if __name__ == "__main__":
     EPSILON = 0.7
     DISCOUNT = 1.00
     FRAME_RATE = 0.02
+    DISABLE_RENDERING = False # whether to disable rendering the game
 
     WEIGHT_LOAD_PATH = None # if none, do not load weights to DQNs, initialise randomly
     STORE_WEIGHTS = True # whether to store the DQN weights after completeing the run (stores target network last values)
     WEIGHT_STORE_PATH = os.getcwd() + "/weights"
     WEIGHT_STORE_NAMESTAMP = "latest" # if None: generate a time-based namestamp; if some string: can overwrite that file!
+
     #np.random.seed(333)
     #random.seed(333)
+    GAME_SEED = None # environment seed
     
-    learner = BreakoutDQNLearner(BUFFER_SIZE, CYCLES_FOR_TRANSFER, DISCOUNT, load_weights=WEIGHT_LOAD_PATH)
+    learner = BreakoutDQNLearner(BUFFER_SIZE, CYCLES_FOR_TRANSFER, DISCOUNT, load_weights=WEIGHT_LOAD_PATH, game_seed=GAME_SEED)
     print(">__main__: Filling buffer (samples:", BUFFER_SIZE, "total)")
     for i in range(BUFFER_SIZE): # buffer filling
         #print("Filling buffer: cycle", i + 1)
         learner.takeActionAndStoreExperience(epsilon=EPSILON, strategy='random')
-    #learner.render(FRAME_RATE)
+    #learner.render(FRAME_RATE, disable=DISABLE_RENDERING)
     for i in range(N_EPOCHS_MASTER):
         print("Master epoch", i + 1)
         for _ in range(N_ACTIONS_PER_PLAY_CYCLE):
             learner.takeActionAndStoreExperience(epsilon=EPSILON)
-            #learner.render(FRAME_RATE)
+            #learner.render(FRAME_RATE, disable=DISABLE_RENDERING)
         learner.updateNetwork(nsamples_replay_buffer=N_SAMPLES_PER_LEARN_CYCLE, epochs=N_EPOCHS_PER_LEARN_CYCLE)
         total_score = 0
         state = learner.game.clone_full_state()
@@ -244,7 +249,7 @@ if __name__ == "__main__":
     while not complete:
         tup = learner.takeActionAndStoreExperience(epsilon=0.9, do_not_store=True)
         #print("Action", tup[learner.buffer_indices['action']])
-        learner.render(FRAME_RATE)
+        learner.render(FRAME_RATE, disable=DISABLE_RENDERING)
         total_score += tup[learner.buffer_indices['reward']]
         game_score += tup[learner.buffer_indices['reward']]
         if tup[learner.buffer_indices['game_over']] == True:
