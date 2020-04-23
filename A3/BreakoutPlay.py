@@ -92,6 +92,7 @@ class BreakoutDQNLearner:
         #... with the prediction network weights
 
         self.game = gym.make('Breakout-v0')
+        self.game_seed = game_seed
         self.game.seed(game_seed)
         self.current_frame = self.game.reset()
         self.current_frame, _, self.game_over, _ = self.game.step(random.choice(range(1, self.game.action_space.n)))
@@ -190,6 +191,7 @@ class BreakoutDQNLearner:
 
     def resetAndRandomNonZeroMove(self):
         self.game.reset() # reset the game completely
+        self.game.seed(self.game_seed) # reseed
         self.current_frame, _, self.game_over, _ = self.game.step(random.choice(range(1, self.game.action_space.n))) # prevent getting stuck in zero-moves
         return
 
@@ -200,11 +202,11 @@ if __name__ == "__main__":
     CYCLES_FOR_TRANSFER = 10
     N_ACTIONS_PER_PLAY_CYCLE = 10
     N_SAMPLES_PER_LEARN_CYCLE = 25
-    N_EPOCHS_PER_LEARN_CYCLE = 5
+    N_EPOCHS_PER_LEARN_CYCLE = 10
     N_CYCLES_PERFORMANCE_EVAL = 0
     N_EPOCHS_MASTER = 10
-    EPSILON = 0.7
-    DISCOUNT = 1.00
+    EPSILON = 0.8
+    DISCOUNT = 0.99
     FRAME_RATE = 0.02
     DISABLE_RENDERING = False # whether to disable rendering the game
     EXPERIENCE_BUFFER_MODE = 'posisplit' # experience buffer type: 'simple', 'posisplit' or 'trajectory'
@@ -235,7 +237,7 @@ if __name__ == "__main__":
         state = learner.game.clone_full_state()
         for _ in range(N_CYCLES_PERFORMANCE_EVAL):
             learner.resetAndRandomNonZeroMove()
-            tup = learner.takeActionAndStoreExperience(epsilon=EPSILON, do_not_store=True)
+            tup = learner.takeActionAndStoreExperience(epsilon=0.95, do_not_store=True)
             total_score += tup[learner.buffer_indices['reward']]
         learner.game.restore_full_state(state)
         print("Total score for master epoch:", total_score)
