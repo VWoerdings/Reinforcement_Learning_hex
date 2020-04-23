@@ -82,9 +82,19 @@ class BreakoutNetwork:
 
 
 class BreakoutDQNLearner:
-    def __init__(self, buffer_size, cycles_per_network_transfer, discount_factor, load_weights=None, game_seed=None):
-        # self.buffer = BreakoutExperienceBuffer(buffer_size)
-        self.buffer = BreakoutExperiencePosisplitBuffer(buffer_size, 0.2*buffer_size)
+    def __init__(self, buffer_size, cycles_per_network_transfer, discount_factor, load_weights=None, game_seed=None,
+                 buffer_mode='simple'):
+        self.buffer_mode = buffer_mode
+        if buffer_mode == 'simple':
+            self.buffer = BreakoutExperienceBuffer(buffer_size)
+        elif buffer_mode == 'posisplit':
+            self.buffer = BreakoutExperiencePosisplitBuffer(buffer_size, buffer_size * 0.2)
+        elif buffer_mode == 'trajectory':
+            self.buffer = BreakoutExperienceTrajectoryBuffer(buffer_size,
+                                                             auto_backpropagation_discount=discount_factor)  # ATTN: buffer_size is now the size in games, not in samples!
+        else:
+            raise Exception(("@BreakoutDQNLearner.__init__: invalid buffer mode: " + buffer_mode))
+
         self.n_updates_count = 0  # how many times the network(s) was updated
         self.cycles_per_network_transfer = cycles_per_network_transfer  # after how many update cylces we update the target network...
         self.discount_factor = discount_factor
@@ -216,7 +226,8 @@ if __name__ == "__main__":
     EPSILON = 0.7
     DISCOUNT = 0.99
     FRAME_RATE = 0.02
-    DISABLE_RENDERING = True  # whether to disable rendering the game
+    DISABLE_RENDERING = False  # whether to disable rendering the game
+    EXPERIENCE_BUFFER_MODE = 'posisplit'  # experience buffer type: 'simple', 'posisplit' or 'trajectory'
 
     WEIGHT_LOAD_PATH = None  # if none, do not load weights to DQNs, initialise randomly
     STORE_WEIGHTS = True  # whether to store the DQN weights after completeing the run (stores target network last values)
@@ -227,8 +238,8 @@ if __name__ == "__main__":
     # random.seed(333)
     GAME_SEED = None  # environment seed
 
-    learner = BreakoutDQNLearner(BUFFER_SIZE, CYCLES_FOR_TRANSFER, DISCOUNT, load_weights=WEIGHT_LOAD_PATH,
-                                 game_seed=GAME_SEED)
+    learner = BreakoutDQNLearner(BUFFER_SIZE, CYCLES_FOR_TRANSFER, DISCOUNT,
+                                 load_weights=WEIGHT_LOAD_PATH, game_seed=GAME_SEED, buffer_mode=EXPERIENCE_BUFFER_MODE)
     print(">__main__: Filling buffer (samples:", BUFFER_SIZE, "total)")
     for i in range(BUFFER_SIZE):  # buffer filling
         # print("Filling buffer: cycle", i + 1)
