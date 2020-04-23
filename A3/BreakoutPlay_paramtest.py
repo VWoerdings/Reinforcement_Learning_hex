@@ -83,7 +83,8 @@ class BreakoutNetwork:
 
 class BreakoutDQNLearner:
     def __init__(self, buffer_size, cycles_per_network_transfer, discount_factor, load_weights=None, game_seed=None):
-        self.buffer = BreakoutExperienceBuffer(buffer_size)
+        # self.buffer = BreakoutExperienceBuffer(buffer_size)
+        self.buffer = BreakoutExperiencePosisplitBuffer(buffer_size, buffer_size/10)
         self.n_updates_count = 0  # how many times the network(s) was updated
         self.cycles_per_network_transfer = cycles_per_network_transfer  # after how many update cylces we update the target network...
         self.discount_factor = discount_factor
@@ -213,7 +214,7 @@ if __name__ == "__main__":
     N_CYCLES_PERFORMANCE_EVAL = 0
     N_EPOCHS_MASTER = 10000
     EPSILON = 0.7
-    DISCOUNT = 1.00
+    DISCOUNT = 0.99
     FRAME_RATE = 0.02
     DISABLE_RENDERING = True  # whether to disable rendering the game
 
