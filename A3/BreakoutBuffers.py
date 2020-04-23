@@ -133,14 +133,16 @@ class BreakoutExperienceTrajectoryBuffer:
         if reward > 0: # backpropagate positive rewards along the trajectory TODO: cache discounted exponentials?
             for i, exp in reversed(list(enumerate(self.trajectories[game_index]))[0:-1]):
                 discounted_reward = (backpropagation_discount)**(i + 1) * reward
-                self.trajectories[game_index][i] += discounted_reward # increase associated reward
+                unpack_list = list(self.trajectories[game_index][i]) # stupid tuples
+                unpack_list[2] += discounted_reward # increase reward; index 2 associated with reward
+                self.trajectories[game_index][i] = tuple(unpack_list)
         self.total_samples += 1
         self.buffer_size_per_trajectory[game_index] += 1
         return
 
     def sample(self, n_samples, equalise_over_games=False):
         # Sample n_samples from the buffer, if equalise_over_games is True: sample with equal probability over games instead of over total samples
-        if nsamples > self.total_samples:
+        if n_samples > self.total_samples:
             raise Exception("@BreakoutExperienceTrajectoryBuffer.sample: n_samples is larger than buffer size!")
         if self.total_samples <= 0:
             raise Exception("@BreakoutExperienceTrajectoryBuffer.sample: the buffer is empty!")
@@ -171,14 +173,15 @@ class BreakoutExperienceTrajectoryBuffer:
     def put(self, experience, force_new_game=False):
         # This is an automatic buffer putter.
         # It adds new games and puts experiences in the 'current' game automatically.
+        if (len(self.trajectories) == 0) or force_new_game:
+            self.active_index = None
+        if self.active_index == None:
+            self.active_index = self.putNewGame() # create a new game
+            
         game_over = experience[3] # index 3 associated with game over
-        if game_over or (len(trajectories) == 0) or force_new_game:
-            game_index = self.putNewGame() # create new game trajectory
-            if not game_over or force_new_game or (len(trajectories) == 0): # else we update later
-                self.active_index = game_index
         self.addExperienceToGame(experience, self.active_index, backpropagation_discount=self.auto_backpropagation_discount)
         if game_over:
-            self.active_index = game_index
+            self.active_index = self.putNewGame() # create a new game, the last game was game over
         return
 
     def clear(self):
