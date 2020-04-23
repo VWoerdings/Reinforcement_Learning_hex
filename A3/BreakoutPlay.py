@@ -237,6 +237,8 @@ if __name__ == "__main__":
         timest = time.localtime(time.time())
         if WEIGHT_STORE_NAMESTAMP == None:
             namestamp = "breakout_weights_" + str(timest.tm_mon) + str(timest.tm_mday) + str(timest.tm_hour) + str(timest.tm_min) + str(timest.tm_sec)
+        else:
+            namestamp = WEIGHT_STORE_NAMESTAMP
         learner.target_network.model.save_weights((WEIGHT_STORE_PATH + "/" + namestamp))
 
     # Test the AI in NUM_GAMES games
