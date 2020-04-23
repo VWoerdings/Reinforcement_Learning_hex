@@ -1,11 +1,12 @@
+import tensorflow as tf
+from tensorflow.keras import layers, models
+import gym
 import random
 import time
-
-import gym
 import numpy as np
-import tensorflow as tf
+import os
+
 from BreakoutBuffers import *
-from tensorflow.keras import layers, models
 
 
 # RL Assigment 3: DQN Learning; Part 2: Atari Breakout
@@ -27,7 +28,7 @@ from tensorflow.keras import layers, models
 # ... proportion of positive reward samples kept separately in the buffer
 
 class BreakoutNetwork:
-    def __init__(self, frame_size, resize_factor, n_actions, loss_function, optimiser):
+    def __init__(self, frame_size, resize_factor, n_actions, loss_function, optimiser, load_weights=None):
         self.original_frame_size = frame_size
         self.resize_factor = resize_factor
         self.reduced_frame_size = np.array([self.original_frame_size[0] * resize_factor,
@@ -36,10 +37,8 @@ class BreakoutNetwork:
         self.n_actions = n_actions
 
         # construct the network
-        self.network_params = [(32, (3, 3), (1, 1)),
-                               (64, (3, 3), (1, 1)),
-                               (64, (3, 3), (1, 1))]
-        # convolutional feature dimensionality (output) and stride: every entry = 1 conv. layer
+        self.network_params = [(32, (3, 3), (1, 1)), (64, (3, 3), (1, 1)), (
+        64, (3, 3), (1, 1))]  # convolutional feature dimensionality (output) and stride: every entry = 1 conv. layer
         # [nfilters, (kernel_size_X, kernel_size_Y), (stride_X, stride_Y)]
         # previous tries: [32, (3, 3), (1, 1)]
         # [(32, (3, 3), (1, 1)), (64, (3, 3), (1, 1)), (64, (3, 3), (1, 1))]
@@ -63,6 +62,9 @@ class BreakoutNetwork:
         self.model = model
         self.model.compile(loss=loss_function, optimizer=optimiser)
 
+        if load_weights != None:  # load weights from a weights filepath
+            self.model.load_weights(load_weights)
+
     def predictQVectorFromFrame(self, frames):
         if len(frames.shape) == 3:
             frames = np.reshape(frames, (1, frames.shape[0], frames.shape[1], frames.shape[2]))  # single-image batch
@@ -80,14 +82,16 @@ class BreakoutNetwork:
 
 
 class BreakoutDQNLearner:
-    def __init__(self, buffer_size, cycles_per_network_transfer, discount_factor):
-        self.buffer = BreakoutExperienceBuffer(buffer_size)
+    def __init__(self, buffer_size, cycles_per_network_transfer, discount_factor, load_weights=None, game_seed=None):
+        # self.buffer = BreakoutExperienceBuffer(buffer_size)
+        self.buffer = BreakoutExperiencePosisplitBuffer(buffer_size, 0.2*buffer_size)
         self.n_updates_count = 0  # how many times the network(s) was updated
         self.cycles_per_network_transfer = cycles_per_network_transfer  # after how many update cylces we update the target network...
         self.discount_factor = discount_factor
         # ... with the prediction network weights
 
         self.game = gym.make('Breakout-v0')
+        self.game.seed(game_seed)
         self.current_frame = self.game.reset()
         self.current_frame, _, self.game_over, _ = self.game.step(random.choice(range(1, self.game.action_space.n)))
         self.game_over = False
@@ -98,9 +102,9 @@ class BreakoutDQNLearner:
         sgd = tf.optimizers.SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)  # stochastic gradient descent
         rms = tf.optimizers.RMSprop(learning_rate=0.01, rho=0.9)  # RMSprop
         self.target_network = BreakoutNetwork(self.current_frame.shape, 1, self.action_space_size, "mean_squared_error",
-                                              rms)
+                                              rms, load_weights=load_weights)
         self.prediction_network = BreakoutNetwork(self.current_frame.shape, 1, self.action_space_size,
-                                                  "mean_squared_error", rms)
+                                                  "mean_squared_error", rms, load_weights=load_weights)
 
         self.buffer_indices = {'start_frame': 0, 'action': 1, 'reward': 2, 'game_over': 3, 'result_frame': 4}
 
@@ -163,13 +167,14 @@ class BreakoutDQNLearner:
             self.target_network.model.set_weights(self.prediction_network.model.get_weights())
         return
 
-    def render(self, frame_rate_mills):
+    def render(self, frame_rate_mills, disable=False):
         # Wait for a maximum of frame_rate_mills milliseconds per render cycle, draw the game screen with most recent action
-        time_now = time.time()
-        frame_wait = max(0, (frame_rate_mills - (time_now - self.last_frame_time)))
-        time.sleep(frame_wait)
-        self.last_frame_time = time_now
-        self.game.render()
+        if not disable:
+            time_now = time.time()
+            frame_wait = max(0, (frame_rate_mills - (time_now - self.last_frame_time)))
+            time.sleep(frame_wait)
+            self.last_frame_time = time_now
+            self.game.render()
         return
 
     def _selectEpsilonGreedy(self, Q_vector, epsilon=0.8):
@@ -207,25 +212,34 @@ if __name__ == "__main__":
     N_SAMPLES_PER_LEARN_CYCLE = 25
     N_EPOCHS_PER_LEARN_CYCLE = 5
     N_CYCLES_PERFORMANCE_EVAL = 0
-    N_EPOCHS_MASTER = 2500
+    N_EPOCHS_MASTER = 10000
     EPSILON = 0.7
-    DISCOUNT = 1.00
+    DISCOUNT = 0.99
     FRAME_RATE = 0.02
+    DISABLE_RENDERING = True  # whether to disable rendering the game
+
+    WEIGHT_LOAD_PATH = None  # if none, do not load weights to DQNs, initialise randomly
+    STORE_WEIGHTS = True  # whether to store the DQN weights after completeing the run (stores target network last values)
+    WEIGHT_STORE_PATH = os.getcwd() + "/weights"
+    WEIGHT_STORE_NAMESTAMP = "latest"  # if None: generate a time-based namestamp; if some string: can overwrite that file!
+
     # np.random.seed(333)
     # random.seed(333)
+    GAME_SEED = None  # environment seed
 
-    learner = BreakoutDQNLearner(BUFFER_SIZE, CYCLES_FOR_TRANSFER, DISCOUNT)
+    learner = BreakoutDQNLearner(BUFFER_SIZE, CYCLES_FOR_TRANSFER, DISCOUNT, load_weights=WEIGHT_LOAD_PATH,
+                                 game_seed=GAME_SEED)
     print(">__main__: Filling buffer (samples:", BUFFER_SIZE, "total)")
     for i in range(BUFFER_SIZE):  # buffer filling
         # print("Filling buffer: cycle", i + 1)
         learner.takeActionAndStoreExperience(epsilon=EPSILON, strategy='random')
-    # learner.render(FRAME_RATE)
+    # learner.render(FRAME_RATE, disable=DISABLE_RENDERING)
     for i in range(N_EPOCHS_MASTER):
         print("Master epoch", i + 1)
         for _ in range(N_ACTIONS_PER_PLAY_CYCLE):
             learner.takeActionAndStoreExperience(epsilon=EPSILON)
-            # learner.render(FRAME_RATE)
-        learner.updateNetwork(nas_replay_buffer=N_SAMPLES_PER_LEARN_CYCLE, epochs=N_EPOCHS_PER_LEARN_CYCLE)
+            # learner.render(FRAME_RATE, disable=DISABLE_RENDERING)
+        learner.updateNetwork(nsamples_replay_buffer=N_SAMPLES_PER_LEARN_CYCLE, epochs=N_EPOCHS_PER_LEARN_CYCLE)
         total_score = 0
         state = learner.game.clone_full_state()
         for _ in range(N_CYCLES_PERFORMANCE_EVAL):
@@ -234,6 +248,19 @@ if __name__ == "__main__":
             total_score += tup[learner.buffer_indices['reward']]
         learner.game.restore_full_state(state)
         print("Total score for master epoch:", total_score)
+
+    if STORE_WEIGHTS:
+        print(">__main__: storing weights")
+        if not os.path.isdir(WEIGHT_STORE_PATH):
+            print(">__main__: creating directory:", WEIGHT_STORE_PATH)
+            os.mkdir(WEIGHT_STORE_PATH)
+        timest = time.localtime(time.time())
+        if WEIGHT_STORE_NAMESTAMP == None:
+            namestamp = "breakout_weights_" + str(timest.tm_mon) + str(timest.tm_mday) + str(timest.tm_hour) + str(
+                timest.tm_min) + str(timest.tm_sec)
+        else:
+            namestamp = WEIGHT_STORE_NAMESTAMP
+        learner.target_network.model.save_weights((WEIGHT_STORE_PATH + "/" + namestamp))
 
     # Test the AI in NUM_GAMES games
     NUM_GAMES = 4
@@ -245,7 +272,7 @@ if __name__ == "__main__":
     while not complete:
         tup = learner.takeActionAndStoreExperience(epsilon=0.9, do_not_store=True)
         # print("Action", tup[learner.buffer_indices['action']])
-        learner.render(FRAME_RATE)
+        learner.render(FRAME_RATE, disable=DISABLE_RENDERING)
         total_score += tup[learner.buffer_indices['reward']]
         game_score += tup[learner.buffer_indices['reward']]
         if tup[learner.buffer_indices['game_over']] == True:
