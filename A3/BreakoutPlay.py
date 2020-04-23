@@ -4,6 +4,7 @@ import gym
 import random
 import time
 import numpy as np
+import os
 
 from BreakoutBuffers import *
 
@@ -26,7 +27,7 @@ from BreakoutBuffers import *
 #... proportion of positive reward samples kept separately in the buffer
 
 class BreakoutNetwork:
-    def __init__(self, frame_size, resize_factor, n_actions, loss_function, optimiser):
+    def __init__(self, frame_size, resize_factor, n_actions, loss_function, optimiser, load_weights=None):
         self.original_frame_size = frame_size
         self.resize_factor = resize_factor
         self.reduced_frame_size = np.array([self.original_frame_size[0] * resize_factor,
@@ -55,6 +56,9 @@ class BreakoutNetwork:
         self.model = model
         self.model.compile(loss=loss_function, optimizer=optimiser)
 
+        if load_weights != None: # load weights from a weights filepath
+            self.model.load_weights(load_weights)
+
     def predictQVectorFromFrame(self, frames):
         if len(frames.shape) == 3:
             frames = np.reshape(frames, (1, frames.shape[0], frames.shape[1], frames.shape[2])) # single-image batch
@@ -71,7 +75,7 @@ class BreakoutNetwork:
         return
 
 class BreakoutDQNLearner:
-    def __init__(self, buffer_size, cycles_per_network_transfer, discount_factor):
+    def __init__(self, buffer_size, cycles_per_network_transfer, discount_factor, load_weights=None):
         self.buffer = BreakoutExperienceBuffer(buffer_size)
         self.n_updates_count = 0 # how many times the network(s) was updated
         self.cycles_per_network_transfer = cycles_per_network_transfer # after how many update cylces we update the target network...
@@ -88,8 +92,8 @@ class BreakoutDQNLearner:
         # target and prediction networks separated to reduce target instability
         sgd = tf.optimizers.SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True) # stochastic gradient descent
         rms = tf.optimizers.RMSprop(learning_rate=0.01, rho=0.9) # RMSprop
-        self.target_network = BreakoutNetwork(self.current_frame.shape, 1, self.action_space_size, "mean_squared_error", rms)
-        self.prediction_network = BreakoutNetwork(self.current_frame.shape, 1, self.action_space_size, "mean_squared_error", rms)
+        self.target_network = BreakoutNetwork(self.current_frame.shape, 1, self.action_space_size, "mean_squared_error", rms, load_weights=load_weights)
+        self.prediction_network = BreakoutNetwork(self.current_frame.shape, 1, self.action_space_size, "mean_squared_error", rms, load_weights=load_weights)
 
         self.buffer_indices = {'start_frame': 0, 'action': 1, 'reward': 2, 'game_over': 3, 'result_frame': 4}
 
@@ -187,14 +191,19 @@ if __name__ == "__main__":
     N_SAMPLES_PER_LEARN_CYCLE = 25
     N_EPOCHS_PER_LEARN_CYCLE = 5
     N_CYCLES_PERFORMANCE_EVAL = 0
-    N_EPOCHS_MASTER = 2500
+    N_EPOCHS_MASTER = 10
     EPSILON = 0.7
     DISCOUNT = 1.00
     FRAME_RATE = 0.02
+
+    WEIGHT_LOAD_PATH = None # if none, do not load weights to DQNs, initialise randomly
+    STORE_WEIGHTS = True # whether to store the DQN weights after completeing the run (stores target network last values)
+    WEIGHT_STORE_PATH = os.getcwd() + "/weights"
+    WEIGHT_STORE_NAMESTAMP = "latest" # if None: generate a time-based namestamp; if some string: can overwrite that file!
     #np.random.seed(333)
     #random.seed(333)
     
-    learner = BreakoutDQNLearner(BUFFER_SIZE, CYCLES_FOR_TRANSFER, DISCOUNT)
+    learner = BreakoutDQNLearner(BUFFER_SIZE, CYCLES_FOR_TRANSFER, DISCOUNT, load_weights=WEIGHT_LOAD_PATH)
     print(">__main__: Filling buffer (samples:", BUFFER_SIZE, "total)")
     for i in range(BUFFER_SIZE): # buffer filling
         #print("Filling buffer: cycle", i + 1)
@@ -214,6 +223,16 @@ if __name__ == "__main__":
             total_score += tup[learner.buffer_indices['reward']]
         learner.game.restore_full_state(state)
         print("Total score for master epoch:", total_score)
+
+    if STORE_WEIGHTS:
+        print(">__main__: storing weights")
+        if not os.path.isdir(WEIGHT_STORE_PATH):
+            print(">__main__: creating directory:", WEIGHT_STORE_PATH)
+            os.mkdir(WEIGHT_STORE_PATH)
+        timest = time.localtime(time.time())
+        if WEIGHT_STORE_NAMESTAMP == None:
+            namestamp = "breakout_weights_" + str(timest.tm_mon) + str(timest.tm_mday) + str(timest.tm_hour) + str(timest.tm_min) + str(timest.tm_sec)
+        learner.target_network.model.save_weights((WEIGHT_STORE_PATH + "/" + namestamp))
 
     # Test the AI in NUM_GAMES games
     NUM_GAMES = 4
