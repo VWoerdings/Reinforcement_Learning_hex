@@ -74,7 +74,7 @@ class BreakoutExperiencePosisplitBuffer:
         if len(self.main_buffer) <= 0:
             raise Exception("@BreakoutExperiencePosisplitBuffer.sample: the main buffer is empty!")
         
-        n_positive_samples = int(ratio_allocated_to_positive * n_samples)
+        n_positive_samples = int(part_allocated_to_positive * n_samples)
         n_main_samples = n_samples - n_positive_samples
         positive_sampling_deficit = len(self.positive_buffer) - n_positive_samples
         if positive_sampling_deficit < 0:

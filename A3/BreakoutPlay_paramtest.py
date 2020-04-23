@@ -84,7 +84,7 @@ class BreakoutNetwork:
 class BreakoutDQNLearner:
     def __init__(self, buffer_size, cycles_per_network_transfer, discount_factor, load_weights=None, game_seed=None):
         # self.buffer = BreakoutExperienceBuffer(buffer_size)
-        self.buffer = BreakoutExperiencePosisplitBuffer(buffer_size, buffer_size/10)
+        self.buffer = BreakoutExperiencePosisplitBuffer(buffer_size, 0.2*buffer_size)
         self.n_updates_count = 0  # how many times the network(s) was updated
         self.cycles_per_network_transfer = cycles_per_network_transfer  # after how many update cylces we update the target network...
         self.discount_factor = discount_factor
