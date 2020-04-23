@@ -31,6 +31,8 @@ class BreakoutExperienceBuffer:
         # Sample n_samples from the experience replay buffer
         if n_samples > len(self.buffer):
             raise Exception("@BreakoutExperienceBuffer.sample: n_samples is larger than buffer size!")
+        if len(self.buffer) <= 0:
+            raise Exception("@BreakoutExperienceBuffer.sample: the buffer is empty!")
 
         experience_choices = random.sample(self.buffer, n_samples) # randomly pick n_samples without replacement
         return experience_choices
@@ -69,6 +71,9 @@ class BreakoutExperiencePosisplitBuffer:
     def sample(self, n_samples, part_allocated_to_positive=0.2):
         # Sample n_samples from the buffer. A cut of the n_samples can be drawn from the positive buffer instead.
         # If there are not enough samples in the positive buffer, the rest is drawn from the main buffer.
+        if len(self.main_buffer) <= 0:
+            raise Exception("@BreakoutExperiencePosisplitBuffer.sample: the main buffer is empty!")
+        
         n_positive_samples = int(ratio_allocated_to_positive * n_samples)
         n_main_samples = n_samples - n_positive_samples
         positive_sampling_deficit = len(self.positive_buffer) - n_positive_samples
@@ -94,11 +99,13 @@ class BreakoutExperiencePosisplitBuffer:
 
 class BreakoutExperienceTrajectoryBuffer:
     # A buffer that stores and samples from game trajectories instead of individual experiences
-    def __init__(self, max_size_games):
+    def __init__(self, max_size_games, auto_backpropagation_discount=1.00):
         self.max_size = max_size_games
         self.trajectories = []
         self.total_samples = 0
         self.buffer_size_per_trajectory = []
+        self.active_index = None # used for automatic putting (see function self.put)
+        self.auto_backpropagation_discount = auto_backpropagation_discount # used in the automatic putter
 
     def putNewGame(self):
         # Put an empty new game in the trajectories buffer
@@ -132,6 +139,11 @@ class BreakoutExperienceTrajectoryBuffer:
 
     def sample(self, n_samples, equalise_over_games=False):
         # Sample n_samples from the buffer, if equalise_over_games is True: sample with equal probability over games instead of over total samples
+        if nsamples > self.total_samples:
+            raise Exception("@BreakoutExperienceTrajectoryBuffer.sample: n_samples is larger than buffer size!")
+        if self.total_samples <= 0:
+            raise Exception("@BreakoutExperienceTrajectoryBuffer.sample: the buffer is empty!")
+        
         samples = []
         if not equalise_over_games:
             for _ in range(n_samples):
@@ -147,13 +159,30 @@ class BreakoutExperienceTrajectoryBuffer:
                 samples.append(self.trajectories[game_index][ingame_index])                
         else:
             for _ in range(n_samples):
-                game_index = random.randrange(len(self.trajectories))
+                while True:
+                    game_index = random.randrange(len(self.trajectories))
+                    if self.buffer_size_per_trajectory[game_index] > 0: # prevent zero-drafting
+                        break
                 ingame_index = random.randrange(self.buffer_size_per_trajectory[game_index])
                 samples.append(self.trajectories[game_index][ingame_index])
         return samples
+
+    def put(self, experience, force_new_game=False):
+        # This is an automatic buffer putter.
+        # It adds new games and puts experiences in the 'current' game automatically.
+        game_over = experience[3] # index 3 associated with game over
+        if game_over or (len(trajectories) == 0) or force_new_game:
+            game_index = self.putNewGame() # create new game trajectory
+            if not game_over or force_new_game or (len(trajectories) == 0): # else we update later
+                self.active_index = game_index
+        self.addExperienceToGame(experience, self.active_index, backpropagation_discount=self.auto_backpropagation_discount)
+        if game_over:
+            self.active_index = game_index
+        return
 
     def clear(self):
         self.trajectories = []
         self.total_samples = 0
         self.buffer_size_per_trajectory = []
+        self.active_index = None
         return
