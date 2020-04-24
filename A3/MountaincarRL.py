@@ -14,7 +14,7 @@ steps = 200
 buffer_size = 32
 gymAI=GymAI(env , episode, steps, buffer_size)
 graph_eps_vs_success, graph_eps_vs_maxpos = gymAI.initate()
-
+env.close()
 
 plt.plot(graph_eps_vs_maxpos)
 plt.xlabel('Episode')
@@ -32,7 +32,7 @@ steps = 200
 buffer_size = 55
 gymAI=GymAI(env , episode, steps, buffer_size)
 graph_eps_vs_success, graph_eps_vs_maxpos = gymAI.initate()
-
+env.close()
 
 plt.plot(graph_eps_vs_maxpos)
 plt.xlabel('Episode')
