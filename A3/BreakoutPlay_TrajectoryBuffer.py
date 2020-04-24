@@ -14,7 +14,7 @@ from BreakoutBuffers import *
 
 # Breakout DQN Learner using the trajectory type buffer: stores samples in individual game slots
 # Main loop:       
-BUFFER_SIZE = 4 # 10 games
+BUFFER_SIZE = 6 # 10 games
 CYCLES_FOR_TRANSFER = 3
 N_GAMES_PER_PLAY_CYCLE = 1 # new games per master epoch
 GAME_ACTIONS_LIMIT = 10000 # maximum actions per game (prevent getting stuck)
@@ -22,7 +22,7 @@ N_LEARN_CYCLES_PER_MASTER_EPOCH = 2
 N_SAMPLES_PER_LEARN_CYCLE = 80
 N_EPOCHS_PER_LEARN_CYCLE = 10
 N_CYCLES_PERFORMANCE_EVAL = 0
-N_EPOCHS_MASTER = 30
+N_EPOCHS_MASTER = 10000
 EPSILON = 0.7
 DISCOUNT = 0.99
 FRAME_RATE = 0.02
