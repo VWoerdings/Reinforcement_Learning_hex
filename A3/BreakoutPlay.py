@@ -247,7 +247,7 @@ if __name__ == "__main__":
     N_EPOCHS_MASTER = 10
     EPSILON = 0.8 # epsilon-greedy exploration parameter (during training)
     DISCOUNT = 0.99 # discount factor during training
-    EMBELLISH_REWARD_FACTOR = 10 # linear reward scaling
+    EMBELLISH_REWARD_FACTOR = 1 # linear reward scaling
     FRAME_RATE = 0.02 # frame rate for rendering steps
     DISABLE_RENDERING = False # whether to disable rendering the game
     EXPERIENCE_BUFFER_MODE = 'posisplit' # experience buffer type: 'simple', 'posisplit' or 'trajectory'
