@@ -2,7 +2,7 @@
 """
 # RL Assigment 3: DQN Learning; Part 1: Mountain car
 # April 2020
-# Abishek Ekaanth, Virgil Woerdings, Ruben Walen
+# Abhishek Sira chandrashekar, Virgil Woerdings, Ruben Walen
 """
 
 import gym
