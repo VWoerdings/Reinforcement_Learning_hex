@@ -16,6 +16,8 @@ import numpy as np
 class BreakoutExperienceBuffer:
     # A basic experience buffer: has a maximum size, supports random putting and sampling
     def __init__(self, max_size):
+        # Params:
+        # max_size (int): the maximum size of the buffer
         self.max_size = max_size
         self.buffer = []
 
@@ -46,6 +48,9 @@ class BreakoutExperiencePosisplitBuffer:
     # An experience buffer that contains an additional buffer for positive reward samples.
     # During sampling, part of the n_samples can be allocated to positive reward samples only, if possible.
     def __init__(self, max_size_main, max_size_positive):
+        # Params:
+        # max_size_main (int): the maximum size of the main buffer
+        # max_size_positive (int): the maximum size of the positive samples buffer
         self.max_size_main = max_size_main
         self.max_size_positive = max_size_positive
         self.main_buffer = []
@@ -101,6 +106,9 @@ class BreakoutExperiencePosisplitBuffer:
 class BreakoutExperienceTrajectoryBuffer:
     # A buffer that stores and samples from game trajectories instead of individual experiences
     def __init__(self, max_size_games, auto_backpropagation_discount=1.00):
+        # Params:
+        # max_size_games (int): the maximum size in games of the buffer
+        # auto_backpropagation_discount (float, 0 to 1): the discount factor for the automatic putter put()
         self.max_size = max_size_games
         self.trajectories = []
         self.total_samples = 0
@@ -123,7 +131,8 @@ class BreakoutExperienceTrajectoryBuffer:
             return to_replace
 
     def addExperienceToGame(self, experience, game_index, backpropagation_discount=1.00):
-        # Put an experience sample in a game trajectory (append at end).
+        # Put an experience sample in a game trajectory at game_index (append at end).
+        # backpropagation_discount is the backpropagated discount along the rest of the samples
         # If the reward for that experience is positive, backpropagate the reward along the trajectory.
         if game_index >= len(self.trajectories):
             raise IndexError("@BreakoutExperienceTrajectoryBuffer.addExperienceToGame: game index out of range")
@@ -142,6 +151,7 @@ class BreakoutExperienceTrajectoryBuffer:
 
     def sample(self, n_samples, equalise_over_games=False):
         # Sample n_samples from the buffer, if equalise_over_games is True: sample with equal probability over games instead of over total samples
+        # equalise_over_games (bool): whether to uniformly sample a game to pick from before drafting a sample
         if n_samples > self.total_samples:
             raise Exception("@BreakoutExperienceTrajectoryBuffer.sample: n_samples is larger than buffer size!")
         if self.total_samples <= 0:
@@ -173,6 +183,7 @@ class BreakoutExperienceTrajectoryBuffer:
     def put(self, experience, force_new_game=False):
         # This is an automatic buffer putter.
         # It adds new games and puts experiences in the 'current' game automatically.
+        # force_new_game (bool): whether to force a new game to be created in the buffer in the current put() cycle
         if (len(self.trajectories) == 0) or force_new_game:
             self.active_index = None
         if self.active_index == None:
@@ -181,10 +192,11 @@ class BreakoutExperienceTrajectoryBuffer:
         game_over = experience[3] # index 3 associated with game over
         self.addExperienceToGame(experience, self.active_index, backpropagation_discount=self.auto_backpropagation_discount)
         if game_over:
-            self.active_index = self.putNewGame() # create a new game, the last game was game over
+            self.active_index = None # create a new game next put cycle, the last game was game over
         return
 
     def clear(self):
+        # Wipe the buffer
         self.trajectories = []
         self.total_samples = 0
         self.buffer_size_per_trajectory = []

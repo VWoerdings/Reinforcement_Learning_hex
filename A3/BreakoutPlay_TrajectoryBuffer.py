@@ -7,18 +7,24 @@ import os
 from BreakoutPlay import *
 from BreakoutBuffers import *
 
-# Breakout DQN Learner using the trajectory type buffer
+# RL Assigment 3: DQN Learning; Part 2: Atari Breakout
+# April 2020
+# Abishek Ekaanth, Virgil Woerdings, Ruben Walen
+# BreakoutPlay_TrajectoryBuffer.py: a DQN learning loop with the trajectory-type game buffer (see BreakoutBuffers.py)
+
+# Breakout DQN Learner using the trajectory type buffer: stores samples in individual game slots
 # Main loop:       
-BUFFER_SIZE = 6 # 10 games
-CYCLES_FOR_TRANSFER = 5
+BUFFER_SIZE = 4 # 10 games
+CYCLES_FOR_TRANSFER = 3
 N_GAMES_PER_PLAY_CYCLE = 1 # new games per master epoch
 GAME_ACTIONS_LIMIT = 10000 # maximum actions per game (prevent getting stuck)
-N_SAMPLES_PER_LEARN_CYCLE = 40
-N_EPOCHS_PER_LEARN_CYCLE = 15
+N_LEARN_CYCLES_PER_MASTER_EPOCH = 2
+N_SAMPLES_PER_LEARN_CYCLE = 80
+N_EPOCHS_PER_LEARN_CYCLE = 10
 N_CYCLES_PERFORMANCE_EVAL = 0
 N_EPOCHS_MASTER = 30
-EPSILON = 0.8
-DISCOUNT = 0.98
+EPSILON = 0.7
+DISCOUNT = 0.99
 FRAME_RATE = 0.02
 DISABLE_RENDERING = False # whether to disable rendering the game
 EXPERIENCE_BUFFER_MODE = 'trajectory' # experience buffer type: 'simple', 'posisplit' or 'trajectory'
@@ -57,7 +63,8 @@ for i in range(N_EPOCHS_MASTER):
                 if count > GAME_ACTIONS_LIMIT:
                     print(">__main__: game buffer filler reached action limit, aborting fill")
                 break
-    learner.updateNetwork(nsamples_replay_buffer=N_SAMPLES_PER_LEARN_CYCLE, epochs=N_EPOCHS_PER_LEARN_CYCLE)
+    for _ in range(N_LEARN_CYCLES_PER_MASTER_EPOCH):
+        learner.updateNetwork(nsamples_replay_buffer=N_SAMPLES_PER_LEARN_CYCLE, epochs=N_EPOCHS_PER_LEARN_CYCLE)
     total_score = 0
     state = learner.game.clone_full_state()
     for _ in range(N_CYCLES_PERFORMANCE_EVAL):
@@ -87,7 +94,7 @@ game_score = 0
 games_completed = 0
 complete = False
 while not complete:
-    tup = learner.takeActionAndStoreExperience(epsilon=1.00, do_not_store=True)
+    tup = learner.takeActionAndStoreExperience(epsilon=0.98, do_not_store=True)
     #print("Action", tup[learner.buffer_indices['action']])
     learner.render(FRAME_RATE, disable=DISABLE_RENDERING)
     total_score += tup[learner.buffer_indices['reward']]

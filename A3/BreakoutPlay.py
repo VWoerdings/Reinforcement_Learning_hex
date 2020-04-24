@@ -28,6 +28,15 @@ from BreakoutBuffers import *
 
 class BreakoutNetwork:
     def __init__(self, frame_size, resize_factor, n_actions, loss_function, optimiser, load_weights=None):
+        # The DQN Network implementation (static architecture, see below).
+        # The architecture has a variable number of convolutional layers, which are then collected using a dense layer, which outputs to a dense action space layer.
+        # Params:
+        # frame_size (list/array/tuple of int): the size of the frame
+        # resize_factor (float): automatic scaling factor for the frame
+        # n_actions (int): the size of the discrete action space
+        # loss_function (tf loss function): a TensorFlow loss function for training
+        # optimiser (tf optimizer): a TensorFlow network optimizer
+        # load_weights (string): a filepath to a network weights file
         self.original_frame_size = frame_size
         self.resize_factor = resize_factor
         self.reduced_frame_size = np.array([self.original_frame_size[0] * resize_factor,
@@ -60,6 +69,7 @@ class BreakoutNetwork:
             self.model.load_weights(load_weights)
 
     def predictQVectorFromFrame(self, frames):
+        # Predict the Q-values of frames. Automatically resizes images.
         if len(frames.shape) == 3:
             frames = np.reshape(frames, (1, frames.shape[0], frames.shape[1], frames.shape[2])) # single-image batch
         resized_images = tf.image.resize(frames, self.reduced_frame_size[0:2]) # resize images first
@@ -69,13 +79,24 @@ class BreakoutNetwork:
         #    values = layer(values) # propagate through the layer
         #return values # return the values in the output layer after propagating through all layers
 
-    def fit(self, input_frames, output_matrix, batch_size, epochs):                
+    def fit(self, input_frames, output_matrix, batch_size, epochs):
+        # TensorFlow fitting, using output_matrix as targets and input_frames as inputs. This is called in DQNLeaner.updateNetwork()
         resized_images = tf.image.resize(input_frames, self.reduced_frame_size[0:2]) # resize images first
         self.model.fit(input_frames, output_matrix, batch_size=batch_size, epochs=epochs)
         return
 
 class BreakoutDQNLearner:
-    def __init__(self, buffer_size, cycles_per_network_transfer, discount_factor, load_weights=None, game_seed=None, buffer_mode='simple'):
+    def __init__(self, buffer_size, cycles_per_network_transfer, discount_factor, load_weights=None, game_seed=None, buffer_mode='simple', embellish_reward_factor=1):
+        # Our implementation of a DQN-based Q-learning algorithm. This class handles experience storing, game stepping, network updates, action strategy, and more.
+        # Params:
+        # buffer_size (int): the maximum size of the replay buffer
+        # cycles_per_network_transfer (int): how many cycles before the prediction network weights are transferred to the target network
+        # discount_factor (float, 0 to 1): the discount factor for the policy learner
+        # load_weights (string): a filename to load network weights from, for the load/save system
+        # game_seed (None or int): a seed for the Atari environment, if None: the seed is random each game
+        # buffer_mode ('simple' OR 'posisplit' OR 'trajectory'): the type of buffer used, seed BreakoutBuffers.py
+        # embellish_reward_factor (float): a linear scaling factor for rewards sampled from actions. May make training the networks easier?
+        
         self.buffer_mode = buffer_mode
         if buffer_mode == 'simple':
             self.buffer = BreakoutExperienceBuffer(buffer_size)
@@ -88,7 +109,8 @@ class BreakoutDQNLearner:
             
         self.n_updates_count = 0 # how many times the network(s) was updated
         self.cycles_per_network_transfer = cycles_per_network_transfer # after how many update cylces we update the target network...
-        self.discount_factor = discount_factor
+        self.discount_factor = discount_factor # the Q-policy learner discount factor
+        self.embellish_reward_factor = embellish_reward_factor # this is a linear scaling factor for the rewards
         #... with the prediction network weights
 
         self.game = gym.make('Breakout-v0')
@@ -100,11 +122,12 @@ class BreakoutDQNLearner:
         self.last_frame_time = 0
         self.action_space_size = self.game.action_space.n
 
-        # target and prediction networks separated to reduce target instability
-        sgd = tf.optimizers.SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True) # stochastic gradient descent
-        rms = tf.optimizers.RMSprop(learning_rate=0.01, rho=0.9) # RMSprop
-        self.target_network = BreakoutNetwork(self.current_frame.shape, 1, self.action_space_size, "mean_squared_error", rms, load_weights=load_weights)
-        self.prediction_network = BreakoutNetwork(self.current_frame.shape, 1, self.action_space_size, "mean_squared_error", rms, load_weights=load_weights)
+        # target and prediction networks separated to reduce target instability (double DQN)
+        #self.opt = tf.optimizers.SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True) # stochastic gradient descent
+        #self.opt = tf.optimizers.RMSprop(learning_rate=0.001, rho=0.9) # RMSprop
+        self.opt = tf.optimizers.Adagrad(learning_rate=0.01) # adagrad
+        self.target_network = BreakoutNetwork(self.current_frame.shape, 1, self.action_space_size, "mean_squared_error", self.opt, load_weights=load_weights)
+        self.prediction_network = BreakoutNetwork(self.current_frame.shape, 1, self.action_space_size, "mean_squared_error", self.opt, load_weights=load_weights)
 
         self.buffer_indices = {'start_frame': 0, 'action': 1, 'reward': 2, 'game_over': 3, 'result_frame': 4}
 
@@ -114,6 +137,7 @@ class BreakoutDQNLearner:
 
     def getMostPrudentAction(self, strategy='epsilon-greedy', **kwargs):
         # Use a strategy function to determine the most prudent action given the current frame (state) and environment
+        # strategy ('random' OR 'epsilon-greedy'): the prudence strategy for picking the action. May require one or more kwargs.
         Q_vector = self.prediction_network.predictQVectorFromFrame(self.current_frame)
         if strategy == 'epsilon-greedy':
             epsilon = kwargs['epsilon']
@@ -125,9 +149,12 @@ class BreakoutDQNLearner:
         return action
 
     def takeActionAndStoreExperience(self, do_not_store=False, strategy='epsilon-greedy', **kwargs):
+        # Take an action according to the action strategy (see getMostPrudentAction()) and store the experience in the buffer
+        # (unless do_not_store is True)
         action = self.getMostPrudentAction(strategy, **kwargs)
         frame, reward, game_over, _ = self.game.step(action)
 
+        reward = reward * self.embellish_reward_factor # we can embellish rewards linearly in this way
         tup = (self.current_frame, action, reward, game_over, frame)
         if not do_not_store:
             self.buffer.put(tup) # put new action tuple in the experience replay buffer
@@ -138,13 +165,23 @@ class BreakoutDQNLearner:
         return tup
 
     def updateNetwork(self, use_replay_buffer=True, nsamples_replay_buffer=1, train_batch_size='auto', epochs=1, experiences=None):
+        # One cycle of DQN network updating. Trains the prediction network, and may then transfer to the target network (see self.cycles_per_network_transfer))
+        # The core training loop uses a root-mean-squared error loss function that should be 0 for every action node in the DQN that is not the
+        #   action node corresponding to the current sampled experience's action. The loss for that action node follows the Q-policy learning loss
+        # Params:
+        # use_replay_buffer (bool): whether to use the replay buffer - if False you must provide experiences yourself
+        # nsamples_replay_buffer (int): how many samples to draft from the replay buffer
+        # train_batch_size ('auto' or int): if not 'auto', you can set the training batch size to something not equal to the number of samples
+        # epochs (int): number of epochs to train
+        # experiences (None or list of experiences): a list of experiences if use_replay_buffer == False
         if train_batch_size == 'auto':
             train_batch_size = nsamples_replay_buffer
         if use_replay_buffer:
             experience_batch = self.buffer.sample(nsamples_replay_buffer) # throws exception: buffer content too small
         else:
             experience_batch = experiences
-            
+
+        # the core training loop of the algorithm starts here
         target_matrix = np.zeros((nsamples_replay_buffer, self.action_space_size)) # matrix of target Q values
         input_frames = [None for _ in range(nsamples_replay_buffer)] # the frames to use as inputs
         for i, exp in enumerate(experience_batch):
@@ -163,6 +200,7 @@ class BreakoutDQNLearner:
 
     def render(self, frame_rate_mills, disable=False):
         # Wait for a maximum of frame_rate_mills milliseconds per render cycle, draw the game screen with most recent action
+        # disable (bool): useful for command-line runs
         if not disable:
             time_now = time.time()
             frame_wait = max(0, (frame_rate_mills - (time_now - self.last_frame_time)))
@@ -190,6 +228,7 @@ class BreakoutDQNLearner:
         return random.randrange(Q_vector.shape[1])
 
     def resetAndRandomNonZeroMove(self):
+        # Reset the game, reseed and then do a random move to start the game again
         self.game.reset() # reset the game completely
         self.game.seed(self.game_seed) # reseed
         self.current_frame, _, self.game_over, _ = self.game.step(random.choice(range(1, self.game.action_space.n))) # prevent getting stuck in zero-moves
@@ -198,16 +237,16 @@ class BreakoutDQNLearner:
 # Main loop:       
 if __name__ == "__main__":
     # DQN Learning on Atari Breakout
-    BUFFER_SIZE = 500
-    CYCLES_FOR_TRANSFER = 10
-    N_ACTIONS_PER_PLAY_CYCLE = 10
-    N_SAMPLES_PER_LEARN_CYCLE = 25
-    N_EPOCHS_PER_LEARN_CYCLE = 10
-    N_CYCLES_PERFORMANCE_EVAL = 0
+    BUFFER_SIZE = 500 # size of the replay buffer
+    CYCLES_FOR_TRANSFER = 10 # cycles to wait before transferring prediction weights to target network
+    N_ACTIONS_PER_PLAY_CYCLE = 10 # number of actions to sample in each master epoch
+    N_SAMPLES_PER_LEARN_CYCLE = 25 # number of samples to train with in master epoch training step
+    N_EPOCHS_PER_LEARN_CYCLE = 10 # number of epochs to train per master epoch
+    N_CYCLES_PERFORMANCE_EVAL = 0 # number of cycles for performance evaluation during each master epoch (slows down the algorithm)
     N_EPOCHS_MASTER = 10
-    EPSILON = 0.8
-    DISCOUNT = 0.99
-    FRAME_RATE = 0.02
+    EPSILON = 0.8 # epsilon-greedy exploration parameter (during training)
+    DISCOUNT = 0.99 # discount factor during training
+    FRAME_RATE = 0.02 # frame rate for rendering steps
     DISABLE_RENDERING = False # whether to disable rendering the game
     EXPERIENCE_BUFFER_MODE = 'posisplit' # experience buffer type: 'simple', 'posisplit' or 'trajectory'
 
