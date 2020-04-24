@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Apr 13 16:44:52 2020
-
-@author: Abhishek
+# RL Assigment 3: DQN Learning; Part 1: Mountain car
+# April 2020
+# Abishek Ekaanth, Virgil Woerdings, Ruben Walen
 """
 
 import gym
