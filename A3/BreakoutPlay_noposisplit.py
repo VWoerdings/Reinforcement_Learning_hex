@@ -222,12 +222,12 @@ if __name__ == "__main__":
     N_SAMPLES_PER_LEARN_CYCLE = 25
     N_EPOCHS_PER_LEARN_CYCLE = 5
     N_CYCLES_PERFORMANCE_EVAL = 0
-    N_EPOCHS_MASTER = 10000
+    N_EPOCHS_MASTER = 20000
     EPSILON = 0.7
     DISCOUNT = 0.99
     FRAME_RATE = 0.02
     DISABLE_RENDERING = False  # whether to disable rendering the game
-    EXPERIENCE_BUFFER_MODE = 'posisplit'  # experience buffer type: 'simple', 'posisplit' or 'trajectory'
+    EXPERIENCE_BUFFER_MODE = 'simple'  # experience buffer type: 'simple', 'posisplit' or 'trajectory'
 
     WEIGHT_LOAD_PATH = None  # if none, do not load weights to DQNs, initialise randomly
     STORE_WEIGHTS = True  # whether to store the DQN weights after completeing the run (stores target network last values)
