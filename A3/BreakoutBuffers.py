@@ -3,7 +3,7 @@ import numpy as np
 
 # RL Assigment 3: DQN Learning; Part 2: Atari Breakout
 # April 2020
-# Abishek Ekaanth, Virgil Woerdings, Ruben Walen
+# Abhishek Sira Chandrashekar, Virgil Woerdings, Ruben Walen
 # BreakoutBuffers.py: contains experience buffers
 #
 # ENHANCEMENTS:
