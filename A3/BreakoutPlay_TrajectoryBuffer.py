@@ -17,12 +17,12 @@ from BreakoutBuffers import *
 BUFFER_SIZE = 6 # 10 games
 CYCLES_FOR_TRANSFER = 3
 N_GAMES_PER_PLAY_CYCLE = 1 # new games per master epoch
-GAME_ACTIONS_LIMIT = 1000 # maximum actions per game (prevent getting stuck)
+GAME_ACTIONS_LIMIT = 10000 # maximum actions per game (prevent getting stuck)
 N_LEARN_CYCLES_PER_MASTER_EPOCH = 2
 N_SAMPLES_PER_LEARN_CYCLE = 80
 N_EPOCHS_PER_LEARN_CYCLE = 10
 N_CYCLES_PERFORMANCE_EVAL = 0
-N_EPOCHS_MASTER = 10000
+N_EPOCHS_MASTER = 1000
 EPSILON = 0.7
 DISCOUNT = 0.99
 FRAME_RATE = 0.02
