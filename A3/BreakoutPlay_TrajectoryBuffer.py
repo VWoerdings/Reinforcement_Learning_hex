@@ -9,25 +9,26 @@ from BreakoutBuffers import *
 
 # RL Assigment 3: DQN Learning; Part 2: Atari Breakout
 # April 2020
-# Abishek Ekaanth, Virgil Woerdings, Ruben Walen
+# Abhishek Sira Chandrashekar, Virgil Woerdings, Ruben Walen
 # BreakoutPlay_TrajectoryBuffer.py: a DQN learning loop with the trajectory-type game buffer (see BreakoutBuffers.py)
 
 # Breakout DQN Learner using the trajectory type buffer: stores samples in individual game slots
 # Main loop:       
-BUFFER_SIZE = 4 # how many games
-CYCLES_FOR_TRANSFER = 3
+BUFFER_SIZE = 8 # how many games
+CYCLES_FOR_TRANSFER = 4
 N_GAMES_PER_PLAY_CYCLE = 1 # new games per master epoch
 GAME_ACTIONS_LIMIT = 10000 # maximum actions per game (prevent getting stuck)
 N_LEARN_CYCLES_PER_MASTER_EPOCH = 2
 N_SAMPLES_PER_LEARN_CYCLE = 80
 N_EPOCHS_PER_LEARN_CYCLE = 10
 N_CYCLES_PERFORMANCE_EVAL = 0
-N_EPOCHS_MASTER = 100
+N_EPOCHS_MASTER = 10
 EPSILON = 0.7
-DISCOUNT = 0.99
-EMBELLISH_REWARD_FACTOR = 1 # linear reward scaling
+DISCOUNT = 0.95
+EMBELLISH_REWARD_FACTOR = 10 # linear reward scaling
 FRAME_RATE = 0.02
 DISABLE_RENDERING = False # whether to disable rendering the game
+DISABLE_PLOTTING = False
 EXPERIENCE_BUFFER_MODE = 'trajectory' # experience buffer type: 'simple', 'posisplit' or 'trajectory'
 
 WEIGHT_LOAD_PATH = None # if none, do not load weights to DQNs, initialise randomly
@@ -37,7 +38,7 @@ WEIGHT_STORE_NAMESTAMP = "latest" # if None: generate a time-based namestamp; if
 
 #np.random.seed(333)
 #random.seed(333)
-GAME_SEED = None # environment seed
+GAME_SEED = 3 # environment seed
 
 learner = BreakoutDQNLearner(BUFFER_SIZE, CYCLES_FOR_TRANSFER, DISCOUNT,
                              load_weights=WEIGHT_LOAD_PATH, game_seed=GAME_SEED, buffer_mode=EXPERIENCE_BUFFER_MODE,
@@ -96,10 +97,16 @@ learner.resetAndRandomNonZeroMove()
 total_score = 0
 game_score = 0
 games_completed = 0
+max_Q_vector = []
+actions_taken = []
 complete = False
 while not complete:
     tup = learner.takeActionAndStoreExperience(epsilon=0.98, do_not_store=True)
     #print("Action", tup[learner.buffer_indices['action']])
+    Q_vector = learner.prediction_network.predictQVectorFromFrame(tup[learner.buffer_indices['start_frame']])
+    max_Q = np.max(Q_vector)
+    max_Q_vector.append(max_Q)
+    actions_taken.append(tup[learner.buffer_indices['action']])
     learner.render(FRAME_RATE, disable=DISABLE_RENDERING)
     total_score += tup[learner.buffer_indices['reward']]
     game_score += tup[learner.buffer_indices['reward']]
@@ -112,3 +119,19 @@ while not complete:
         else:
             learner.resetAndRandomNonZeroMove()
 print("Average score", str((total_score / NUM_GAMES)))
+
+if not DISABLE_PLOTTING:
+    fig, ax1 = plt.subplots()
+    ax1.plot(max_Q_vector)
+    ax1.set_title("Max Q-values per action frame (one game)")
+    ax1.set_xlabel("Frame")
+    ax1.set_ylabel("Q-value")
+
+    fig, ax2 = plt.subplots()
+    ax2.hist(actions_taken, learner.action_space_size, align='mid')
+    ax2.set_title("Histogram of actions taken (one game)")
+    ax2.set_xlabel("Action")
+    ax2.set_ylabel("Frequency")
+    ax2.set_xticks((np.arange(0.4, (0.4 + learner.action_space_size - 0.75), step=0.75)))
+    ax2.set_xticklabels(list(learner.game.get_action_meanings()))
+    plt.show()
