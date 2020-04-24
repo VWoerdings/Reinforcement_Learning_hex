@@ -6,39 +6,40 @@ Created on Mon Apr 13 17:02:34 2020
 """
 import gym
 from GymAI import *
+import matplotlib.pyplot as plt
 
-env = gym.make("MountainCar-v0")
-episode = 1000
-required_score = -198
+env = gym.make('MountainCar-v0')
+episode = 400
 steps = 200
-number_states = 40
+buffer_size = 32
+gymAI=GymAI(env , episode, steps, buffer_size)
+graph_eps_vs_success, graph_eps_vs_maxpos = gymAI.initate()
 
-gymAI = GymAI(env, episode, required_score, steps, number_states)
-train_data = gymAI.data_preparation()
-model = gymAI.train_model(train_data)
 
-scores = []
-choices = []
-for each_game in range(100):
-    score = 0
-    game_memory = []
-    prev_obs = []
-    for step_index in range(steps):
-        env.render()
-        if len(prev_obs)==0:
-            action = random.randrange(0,2)
-        else:
-            action = np.argmax(model.predict(prev_obs.reshape(-1, len(prev_obs)))[0])
-        
-        choices.append(action)
-        new_observation, reward, done, info = env.step(action)
-        prev_obs = new_observation
-        game_memory.append([new_observation, action])
-        score += reward
-        if done:
-            break
-env.reset()
-scores.append(score)
-print(scores)
-print('Average Score:',sum(scores)/len(scores))
-print('choice 1:{}  choice 0:{} choice 2:{}'.format(choices.count(1)/len(choices),choices.count(0)/len(choices),choices.count(2)/len(choices)))
+plt.plot(graph_eps_vs_maxpos)
+plt.xlabel('Episode')
+plt.ylabel('Furthest Position')
+plt.show()
+    
+plt.plot(graph_eps_vs_success)
+plt.xlabel('Episode')
+plt.ylabel('Reward')
+plt.show()
+
+
+episode = 400
+steps = 200
+buffer_size = 55
+gymAI=GymAI(env , episode, steps, buffer_size)
+graph_eps_vs_success, graph_eps_vs_maxpos = gymAI.initate()
+
+
+plt.plot(graph_eps_vs_maxpos)
+plt.xlabel('Episode')
+plt.ylabel('Furthest Position')
+plt.show()
+    
+plt.plot(graph_eps_vs_success)
+plt.xlabel('Episode')
+plt.ylabel('Reward')
+plt.show()
