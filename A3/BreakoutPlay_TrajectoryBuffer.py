@@ -14,7 +14,7 @@ from BreakoutBuffers import *
 
 # Breakout DQN Learner using the trajectory type buffer: stores samples in individual game slots
 # Main loop:       
-BUFFER_SIZE = 6 # 10 games
+BUFFER_SIZE = 4 # how many games
 CYCLES_FOR_TRANSFER = 3
 N_GAMES_PER_PLAY_CYCLE = 1 # new games per master epoch
 GAME_ACTIONS_LIMIT = 10000 # maximum actions per game (prevent getting stuck)
@@ -22,9 +22,10 @@ N_LEARN_CYCLES_PER_MASTER_EPOCH = 2
 N_SAMPLES_PER_LEARN_CYCLE = 80
 N_EPOCHS_PER_LEARN_CYCLE = 10
 N_CYCLES_PERFORMANCE_EVAL = 0
-N_EPOCHS_MASTER = 1000
+N_EPOCHS_MASTER = 100
 EPSILON = 0.7
 DISCOUNT = 0.99
+EMBELLISH_REWARD_FACTOR = 10 # linear reward scaling
 FRAME_RATE = 0.02
 DISABLE_RENDERING = False # whether to disable rendering the game
 EXPERIENCE_BUFFER_MODE = 'trajectory' # experience buffer type: 'simple', 'posisplit' or 'trajectory'
@@ -39,7 +40,9 @@ WEIGHT_STORE_NAMESTAMP = "latest" # if None: generate a time-based namestamp; if
 GAME_SEED = None # environment seed
 
 learner = BreakoutDQNLearner(BUFFER_SIZE, CYCLES_FOR_TRANSFER, DISCOUNT,
-                             load_weights=WEIGHT_LOAD_PATH, game_seed=GAME_SEED, buffer_mode=EXPERIENCE_BUFFER_MODE)
+                             load_weights=WEIGHT_LOAD_PATH, game_seed=GAME_SEED, buffer_mode=EXPERIENCE_BUFFER_MODE,
+                             embellish_reward_factor=EMBELLISH_REWARD_FACTOR)
+
 print(">__main__: Filling buffer (games:", BUFFER_SIZE, "total)")
 for i in range(BUFFER_SIZE): # buffer filling
     print("Filling buffer: game", i + 1)
@@ -56,6 +59,7 @@ for i in range(N_EPOCHS_MASTER):
     print("Master epoch", i + 1)
     for _ in range(N_GAMES_PER_PLAY_CYCLE):
         count = 0
+        print("Playing game(s)")
         while True: # store a full game
             count += 1
             tup = learner.takeActionAndStoreExperience(epsilon=EPSILON, strategy='random')

@@ -39,9 +39,9 @@ class BreakoutNetwork:
         # load_weights (string): a filepath to a network weights file
         self.original_frame_size = frame_size
         self.resize_factor = resize_factor
-        self.reduced_frame_size = np.array([self.original_frame_size[0] * resize_factor,
-                                            self.original_frame_size[1] * resize_factor,
-                                            self.original_frame_size[2]])
+        self.reduced_frame_size = np.array([int(self.original_frame_size[0] * resize_factor),
+                                            int(self.original_frame_size[1] * resize_factor),
+                                            int(self.original_frame_size[2])])
         self.n_actions = n_actions
 
         # construct the network
@@ -82,7 +82,7 @@ class BreakoutNetwork:
     def fit(self, input_frames, output_matrix, batch_size, epochs):
         # TensorFlow fitting, using output_matrix as targets and input_frames as inputs. This is called in DQNLeaner.updateNetwork()
         resized_images = tf.image.resize(input_frames, self.reduced_frame_size[0:2]) # resize images first
-        self.model.fit(input_frames, output_matrix, batch_size=batch_size, epochs=epochs)
+        self.model.fit(resized_images, output_matrix, batch_size=batch_size, epochs=epochs)
         return
 
 class BreakoutDQNLearner:
@@ -126,8 +126,9 @@ class BreakoutDQNLearner:
         #self.opt = tf.optimizers.SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True) # stochastic gradient descent
         #self.opt = tf.optimizers.RMSprop(learning_rate=0.001, rho=0.9) # RMSprop
         self.opt = tf.optimizers.Adagrad(learning_rate=0.01) # adagrad
-        self.target_network = BreakoutNetwork(self.current_frame.shape, 1, self.action_space_size, "mean_squared_error", self.opt, load_weights=load_weights)
-        self.prediction_network = BreakoutNetwork(self.current_frame.shape, 1, self.action_space_size, "mean_squared_error", self.opt, load_weights=load_weights)
+        self.resize_factor = 1
+        self.target_network = BreakoutNetwork(self.current_frame.shape, self.resize_factor, self.action_space_size, "mean_squared_error", self.opt, load_weights=load_weights)
+        self.prediction_network = BreakoutNetwork(self.current_frame.shape, self.resize_factor, self.action_space_size, "mean_squared_error", self.opt, load_weights=load_weights)
 
         self.buffer_indices = {'start_frame': 0, 'action': 1, 'reward': 2, 'game_over': 3, 'result_frame': 4}
 
@@ -246,6 +247,7 @@ if __name__ == "__main__":
     N_EPOCHS_MASTER = 10
     EPSILON = 0.8 # epsilon-greedy exploration parameter (during training)
     DISCOUNT = 0.99 # discount factor during training
+    EMBELLISH_REWARD_FACTOR = 10 # linear reward scaling
     FRAME_RATE = 0.02 # frame rate for rendering steps
     DISABLE_RENDERING = False # whether to disable rendering the game
     EXPERIENCE_BUFFER_MODE = 'posisplit' # experience buffer type: 'simple', 'posisplit' or 'trajectory'
@@ -260,7 +262,8 @@ if __name__ == "__main__":
     GAME_SEED = None # environment seed
     
     learner = BreakoutDQNLearner(BUFFER_SIZE, CYCLES_FOR_TRANSFER, DISCOUNT,
-                                 load_weights=WEIGHT_LOAD_PATH, game_seed=GAME_SEED, buffer_mode=EXPERIENCE_BUFFER_MODE)
+                                 load_weights=WEIGHT_LOAD_PATH, game_seed=GAME_SEED, buffer_mode=EXPERIENCE_BUFFER_MODE,
+                                 embellish_reward_factor=EMBELLISH_REWARD_FACTOR)
     print(">__main__: Filling buffer (samples:", BUFFER_SIZE, "total)")
     for i in range(BUFFER_SIZE): # buffer filling
         #print("Filling buffer: cycle", i + 1)
