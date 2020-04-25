@@ -5,12 +5,13 @@ import random
 import time
 import numpy as np
 import os
+import matplotlib.pyplot as plt
 
 from BreakoutBuffers import *
 
 # RL Assigment 3: DQN Learning; Part 2: Atari Breakout
 # April 2020
-# Abishek Ekaanth, Virgil Woerdings, Ruben Walen
+# Abhishek Sira Chandrashekar, Virgil Woerdings, Ruben Walen
 # BreakoutPlay: contains the neural code, learning code and main loop
 #
 # TODO:
@@ -39,9 +40,9 @@ class BreakoutNetwork:
         # load_weights (string): a filepath to a network weights file
         self.original_frame_size = frame_size
         self.resize_factor = resize_factor
-        self.reduced_frame_size = np.array([self.original_frame_size[0] * resize_factor,
-                                            self.original_frame_size[1] * resize_factor,
-                                            self.original_frame_size[2]])
+        self.reduced_frame_size = np.array([int(self.original_frame_size[0] * resize_factor),
+                                            int(self.original_frame_size[1] * resize_factor),
+                                            int(self.original_frame_size[2])])
         self.n_actions = n_actions
 
         # construct the network
@@ -82,7 +83,7 @@ class BreakoutNetwork:
     def fit(self, input_frames, output_matrix, batch_size, epochs):
         # TensorFlow fitting, using output_matrix as targets and input_frames as inputs. This is called in DQNLeaner.updateNetwork()
         resized_images = tf.image.resize(input_frames, self.reduced_frame_size[0:2]) # resize images first
-        self.model.fit(input_frames, output_matrix, batch_size=batch_size, epochs=epochs)
+        self.model.fit(resized_images, output_matrix, batch_size=batch_size, epochs=epochs)
         return
 
 class BreakoutDQNLearner:
@@ -126,8 +127,9 @@ class BreakoutDQNLearner:
         #self.opt = tf.optimizers.SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True) # stochastic gradient descent
         #self.opt = tf.optimizers.RMSprop(learning_rate=0.001, rho=0.9) # RMSprop
         self.opt = tf.optimizers.Adagrad(learning_rate=0.01) # adagrad
-        self.target_network = BreakoutNetwork(self.current_frame.shape, 1, self.action_space_size, "mean_squared_error", self.opt, load_weights=load_weights)
-        self.prediction_network = BreakoutNetwork(self.current_frame.shape, 1, self.action_space_size, "mean_squared_error", self.opt, load_weights=load_weights)
+        self.resize_factor = 0.7
+        self.target_network = BreakoutNetwork(self.current_frame.shape, self.resize_factor, self.action_space_size, "mean_squared_error", self.opt, load_weights=load_weights)
+        self.prediction_network = BreakoutNetwork(self.current_frame.shape, self.resize_factor, self.action_space_size, "mean_squared_error", self.opt, load_weights=load_weights)
 
         self.buffer_indices = {'start_frame': 0, 'action': 1, 'reward': 2, 'game_over': 3, 'result_frame': 4}
 
@@ -245,9 +247,11 @@ if __name__ == "__main__":
     N_CYCLES_PERFORMANCE_EVAL = 0 # number of cycles for performance evaluation during each master epoch (slows down the algorithm)
     N_EPOCHS_MASTER = 10
     EPSILON = 0.8 # epsilon-greedy exploration parameter (during training)
-    DISCOUNT = 0.99 # discount factor during training
+    DISCOUNT = 0.95 # discount factor during training
+    EMBELLISH_REWARD_FACTOR = 10 # linear reward scaling
     FRAME_RATE = 0.02 # frame rate for rendering steps
     DISABLE_RENDERING = False # whether to disable rendering the game
+    DISABLE_PLOTTING = False # disable some plot making (see end of this file)
     EXPERIENCE_BUFFER_MODE = 'posisplit' # experience buffer type: 'simple', 'posisplit' or 'trajectory'
 
     WEIGHT_LOAD_PATH = None # if none, do not load weights to DQNs, initialise randomly
@@ -260,7 +264,8 @@ if __name__ == "__main__":
     GAME_SEED = None # environment seed
     
     learner = BreakoutDQNLearner(BUFFER_SIZE, CYCLES_FOR_TRANSFER, DISCOUNT,
-                                 load_weights=WEIGHT_LOAD_PATH, game_seed=GAME_SEED, buffer_mode=EXPERIENCE_BUFFER_MODE)
+                                 load_weights=WEIGHT_LOAD_PATH, game_seed=GAME_SEED, buffer_mode=EXPERIENCE_BUFFER_MODE,
+                                 embellish_reward_factor=EMBELLISH_REWARD_FACTOR)
     print(">__main__: Filling buffer (samples:", BUFFER_SIZE, "total)")
     for i in range(BUFFER_SIZE): # buffer filling
         #print("Filling buffer: cycle", i + 1)
@@ -294,14 +299,21 @@ if __name__ == "__main__":
         learner.target_network.model.save_weights((WEIGHT_STORE_PATH + "/" + namestamp))
 
     # Test the AI in NUM_GAMES games
-    NUM_GAMES = 4
+    NUM_GAMES = 5
     learner.resetAndRandomNonZeroMove()
     total_score = 0
     game_score = 0
     games_completed = 0
+    max_Q_vector = []
+    actions_taken = []
     complete = False
     while not complete:
-        tup = learner.takeActionAndStoreExperience(epsilon=0.9, do_not_store=True)
+        tup = learner.takeActionAndStoreExperience(epsilon=0.98, do_not_store=True)
+        if games_completed == 0: # first game only
+            Q_vector = learner.prediction_network.predictQVectorFromFrame(tup[learner.buffer_indices['start_frame']])
+            max_Q = np.max(Q_vector)
+            max_Q_vector.append(max_Q)
+            actions_taken.append(tup[learner.buffer_indices['action']])
         #print("Action", tup[learner.buffer_indices['action']])
         learner.render(FRAME_RATE, disable=DISABLE_RENDERING)
         total_score += tup[learner.buffer_indices['reward']]
@@ -315,3 +327,19 @@ if __name__ == "__main__":
             else:
                 learner.resetAndRandomNonZeroMove()
     print("Average score", str((total_score / NUM_GAMES)))
+
+    if not DISABLE_PLOTTING:
+        fig, ax1 = plt.subplots()
+        ax1.plot(max_Q_vector)
+        ax1.set_title("Max Q-values per action frame (one game)")
+        ax1.set_xlabel("Frame")
+        ax1.set_ylabel("Q-value")
+
+        fig, ax2 = plt.subplots()
+        ax2.hist(actions_taken, learner.action_space_size, align='mid')
+        ax2.set_title("Histogram of actions taken (one game)")
+        ax2.set_xlabel("Action")
+        ax2.set_ylabel("Frequency")
+        ax2.set_xticks((np.arange(0.4, (0.4 + learner.action_space_size - 0.75), step=0.75)))
+        ax2.set_xticklabels(list(learner.game.get_action_meanings()))
+        plt.show()
