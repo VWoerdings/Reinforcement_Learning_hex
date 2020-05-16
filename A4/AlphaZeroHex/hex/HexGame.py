@@ -1,11 +1,11 @@
 # from __future__ import print_function
 import sys
+sys.path.append('..')
 
 import numpy as np
 from Game import Game
 from hex.HexBoard import HexBoard
 
-sys.path.append('..')
 
 
 class HexGame(Game):
@@ -35,7 +35,7 @@ class HexGame(Game):
         Returns:
             actionSize: number of all possible actions
         """
-        return self.n * self.n + 1  # +1 for pass
+        return self.n * self.n
 
     def getNextState(self, board, player, action):
         """
@@ -49,14 +49,28 @@ class HexGame(Game):
             nextPlayer: player who plays in the next turn (should be -player)
         """
 
-        if action == self.n * self.n:
-            # Pass
-            return board, -player
+        b = HexBoard(self.n)
+        b.board = np.copy(board)
+        move = (int(action / self.n), action % self.n)
+        b.place_debug(move, player)
+        return b.board, -player
+
+    def getNextState_debug(self, board, player, action, **kwargs):
+        """
+        Input:
+            board: current board
+            player: current player (1 or -1)
+            action: action taken by current player
+
+        Returns:
+            nextBoard: board after applying action
+            nextPlayer: player who plays in the next turn (should be -player)
+        """
 
         b = HexBoard(self.n)
         b.board = np.copy(board)
         move = (int(action / self.n), action % self.n)
-        b.place(move, player)
+        b.place_debug(move, player, **kwargs)
         return b.board, -player
 
     def getValidMoves(self, board, player):
@@ -76,7 +90,6 @@ class HexGame(Game):
         valids = np.zeros((self.n, self.n))
         valids[legal_moves] = 1
         valids = valids.reshape(self.n ** 2)
-        valids = np.append(valids, [1])  # Append 1 for pass
         return valids
 
     def getGameEnded(self, board, player):
@@ -128,8 +141,8 @@ class HexGame(Game):
                        is used when training the neural network from examples.
         """
         # mirror, rotational
-        assert (len(pi) == self.n ** 2 + 1)  # 1 for pass
-        pi_board = np.reshape(pi[:-1], (self.n, self.n))
+        assert (len(pi) == self.n ** 2 )
+        pi_board = np.reshape(pi, (self.n, self.n))
         l = []
 
         for i in range(1, 5):
@@ -139,7 +152,7 @@ class HexGame(Game):
                 if j:
                     newB = np.fliplr(newB)
                     newPi = np.fliplr(newPi)
-                l += [(newB, list(newPi.ravel()) + [pi[-1]])]
+                l += [(newB, list(newPi.ravel()))]
         return l
 
     def stringRepresentation(self, board):
@@ -183,3 +196,21 @@ class HexGame(Game):
                         print("- ", end="")
             print("|")
         print("   -----------------------")
+
+if __name__ == "__main__":
+    player = HexBoard.BLUE
+    game = HexGame(1)
+    board = game.getInitBoard()
+    board, player = game.getNextState(board, player, 0)
+    # board, player = game.getNextState(board,player,2)
+    # board, player = game.getNextState(board,player,3)
+    # board, player = game.getNextState(board,player,1)
+    # board, player = game.getNextState(board,player,6)
+    # board, player = game.getNextState(board,player,8)
+    # board, player = game.getNextState(board,player,0)
+    game.display(board)
+    print(game.getValidMoves(board, player))
+    test_board = HexBoard(3)
+    test_board.board = np.copy(board)
+    print(test_board.get_free_positions())
+    print(game.getGameEnded(board,-player))

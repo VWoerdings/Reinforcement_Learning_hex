@@ -1,5 +1,5 @@
 import numpy as np
-
+import sys
 
 class HexBoard:
     BLUE = 1
@@ -61,9 +61,30 @@ class HexBoard:
         if self.game_over:
             print("The game is already over.")
             return
-        elif not self.board[coordinates] == HexBoard.EMPTY:
-            # print("Hex is already occupied") # Todo: should not be called?
+        elif self.board[coordinates] == HexBoard.BLUE or self.board[coordinates] == HexBoard.RED:
+            self.print()
+            print("Tried coordinates: %s" % (coordinates,))
+            raise ValueError("Hex is already occupied.")
+        else:
+            self.board[coordinates] = color
+            if self.check_win(HexBoard.BLUE) or self.check_win(HexBoard.RED):
+                self.game_over = True
+
+    def place_debug(self, coordinates, color, **kwargs):
+        """Places a given color at given coordinates.
+        Args:
+            coordinates (int, int): X and y coordinates to check.
+            color (int): Color to place.
+        """
+        if self.game_over:
+            print("The game is already over.")
             return
+        elif self.board[coordinates] == HexBoard.BLUE or self.board[coordinates] == HexBoard.RED:
+            self.print()
+            print("Tried coordinates: %s" % (coordinates,))
+            print(kwargs)
+            sys.stdout.flush()
+            raise ValueError("Hex is already occupied.")
         else:
             self.board[coordinates] = color
             if self.check_win(HexBoard.BLUE) or self.check_win(HexBoard.RED):
@@ -212,3 +233,14 @@ class HexBoard:
              2D Boolean array, True where the board is empty
         """
         return self.board == HexBoard.EMPTY
+
+if __name__ == "__main__":
+    b = HexBoard(3)
+    b.place((0,0),HexBoard.BLUE)
+    b.place((0,1),HexBoard.RED)
+    b.place((1,0),HexBoard.BLUE)
+    b.place((1,1),HexBoard.RED)
+    b.place((2,0),HexBoard.BLUE)
+    b.print()
+    print(b.game_over)
+    print(b.get_free_positions())
