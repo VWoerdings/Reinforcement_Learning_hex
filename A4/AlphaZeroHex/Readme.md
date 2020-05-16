@@ -12,7 +12,9 @@ This class executes the training loops.
 A class template for a game implementation. Implemented for Hex in the hex package.
 
 # MCTS.py
-Implementation of MCTS for AlphaZero
+Implementation of MCTS for AlphaZero.
+This file contains a temporary fix. Sometimes <em>counts</em> in <em>getActionProb()</em> will be 0. As a result, when <em>temp</em> is 0, the algorithms will pick a rondom move. Sometimes, this move is already played.
+For the temporary fix, when <em>counts</em> is 0, we recalculate possible moves and randomly select one of those. This fix should not be necessary.
 
 # NeuralNet.py
 A class template for a neural network. Implemented for Hex in the hex package.
