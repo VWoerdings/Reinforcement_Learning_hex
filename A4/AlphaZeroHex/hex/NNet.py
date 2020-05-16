@@ -58,7 +58,7 @@ class NNetWrapper(NeuralNet):
     def save_checkpoint(self, folder='checkpoint', filename='checkpoint.pth.tar'):
         filepath = os.path.join(folder, filename)
         if not os.path.exists(folder):
-            print("Checkpoint Directory does not exist! Making directory {}".format(folder))
+            print("Checkpoint Directory does not exist! Making directory %s" % folder)
             os.mkdir(folder)
         else:
             print("Checkpoint Directory exists! ")
@@ -68,5 +68,5 @@ class NNetWrapper(NeuralNet):
         # https://github.com/pytorch/examples/blob/master/imagenet/main.py#L98
         filepath = os.path.join(folder, filename)
         if not os.path.exists(filepath):
-            raise("No model in path {}".format(filepath))
+            raise("No model in path %s" % filepath)
         self.nnet.model.load_weights(filepath)
