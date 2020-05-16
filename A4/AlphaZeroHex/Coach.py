@@ -79,7 +79,7 @@ class Coach():
 
         for i in range(1, self.args.numIters + 1):
             # bookkeeping
-            log.info(f'Starting Iter #{i} ...')
+            log.info('Starting Iter #%d ...' % i)
             # examples of the iteration
             if not self.skipFirstSelfPlay or i > 1:
                 iterationTrainExamples = deque([], maxlen=self.args.maxlenOfQueue)
@@ -92,8 +92,8 @@ class Coach():
                 self.trainExamplesHistory.append(iterationTrainExamples)
 
             if len(self.trainExamplesHistory) > self.args.numItersForTrainExamplesHistory:
-                log.warning(
-                    f"Removing the oldest entry in trainExamples. len(trainExamplesHistory) = {len(self.trainExamplesHistory)}")
+                log.warning("Removing the oldest entry in trainExamples. len(trainExamplesHistory) = %d" %
+                            len(self.trainExamplesHistory))
                 self.trainExamplesHistory.pop(0)
             # backup history to a file
             # NB! the examples were collected using the model from the previous iteration, so (i-1)  
@@ -143,7 +143,7 @@ class Coach():
         modelFile = os.path.join(self.args.load_folder_file[0], self.args.load_folder_file[1])
         examplesFile = modelFile + ".examples"
         if not os.path.isfile(examplesFile):
-            log.warning(f'File "{examplesFile}" with trainExamples not found!')
+            log.warning(f'File %s with trainExamples not found!' % examplesFile)
             r = input("Continue? [y|n]")
             if r != "y":
                 sys.exit()
