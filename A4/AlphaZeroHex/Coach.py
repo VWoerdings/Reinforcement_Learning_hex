@@ -143,7 +143,7 @@ class Coach():
         modelFile = os.path.join(self.args.load_folder_file[0], self.args.load_folder_file[1])
         examplesFile = modelFile + ".examples"
         if not os.path.isfile(examplesFile):
-            log.warning(f'File %s with trainExamples not found!' % examplesFile)
+            log.warning('File %s with trainExamples not found!' % examplesFile)
             r = input("Continue? [y|n]")
             if r != "y":
                 sys.exit()
