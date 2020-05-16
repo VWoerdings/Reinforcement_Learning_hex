@@ -12,6 +12,7 @@ class MCTS():
     """
     This class handles the MCTS tree.
     """
+    debug_counts = None
 
     def __init__(self, game, nnet, args):
         self.game = game
@@ -39,10 +40,16 @@ class MCTS():
 
         s = self.game.stringRepresentation(canonicalBoard)
         counts = [self.Nsa[(s, a)] if (s, a) in self.Nsa else 0 for a in range(self.game.getActionSize())]
+        # Todo: sometimes counts is completely 0?
+        self.debug_counts = counts
 
         if temp == 0:
             bestAs = np.array(np.argwhere(counts == np.max(counts))).flatten()
-            bestA = np.random.choice(bestAs)
+            if np.max(counts) > 0:
+                bestA = np.random.choice(bestAs)
+            else:
+                valid_moves = self.game.getValidMoves(canonicalBoard, None)
+                bestA = np.random.choice(np.squeeze(np.where(valid_moves==1)))  # Temporary fix for if counts is 0
             probs = [0] * len(counts)
             probs[bestA] = 1
             return probs

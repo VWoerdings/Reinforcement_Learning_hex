@@ -92,6 +92,7 @@ class HexGame(Game):
         valids = valids.reshape(self.n ** 2)
         return valids
 
+
     def getGameEnded(self, board, player):
         """
         Input:

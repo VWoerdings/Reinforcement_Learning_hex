@@ -61,7 +61,9 @@ class Coach():
                 trainExamples.append([b, self.curPlayer, p, None])
 
             action = np.random.choice(len(pi), p=pi)
-            board, self.curPlayer = self.game.getNextState_debug(board, self.curPlayer, action, pi=pi, temp=temp, episodeStep=episodeStep)
+            board, self.curPlayer = self.game.getNextState_debug(board, self.curPlayer, action, pi=pi, temp=temp,
+                                                                 episodeStep=episodeStep, counts=self.mcts.debug_counts,
+                                                                 valid_moves=self.game.getValidMoves(board, None))
 
             r = self.game.getGameEnded(board, self.curPlayer)
 
