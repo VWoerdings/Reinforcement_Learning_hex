@@ -22,21 +22,6 @@ Find the optimal parameters for MCTS
 """
 
 
-def backup_alphazero_move(mcts, hexboard, board_size):
-    # Generate a move using alphazero ai
-    dict_board = hexboard.board
-    array_board = np.zeros((board_size, board_size))
-    for key in dict_board.keys():
-        # Convert the board from dict to array
-        x, y = key
-        array_board[x, y] = dict_board[x, y]
-        # print(dict_board[x, y])
-
-    action = np.argmax(mcts.getActionProb(array_board, temp=0))
-    move = (int(action / board_size), action % board_size)  # Convert the action from int to tuple
-    return move
-
-
 def alphazero_move(mcts, board_size):
     def move_gen(hexboard):
         # Generate a move using alphazero ai
@@ -49,6 +34,7 @@ def alphazero_move(mcts, board_size):
         action = np.argmax(mcts.getActionProb(array_board, temp=0))
         move = (int(action / board_size), action % board_size)  # Convert the action from int to tuple
         return move
+
     return move_gen
 
 
