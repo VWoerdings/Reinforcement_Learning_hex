@@ -7,7 +7,6 @@ from Game import Game
 from hex.HexBoard import HexBoard
 
 
-
 class HexGame(Game):
     square_content = {
         -1: "r",
@@ -86,10 +85,12 @@ class HexGame(Game):
         """
         b = HexBoard(self.n)
         b.board = np.copy(board)
+        # print(board)
         legal_moves = b.get_free_positions()
         valids = np.zeros((self.n, self.n))
         valids[legal_moves] = 1
         valids = valids.reshape(self.n ** 2)
+        # print(valids)
         return valids
 
 
