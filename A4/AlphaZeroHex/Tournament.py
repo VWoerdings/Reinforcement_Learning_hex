@@ -41,7 +41,7 @@ def alphazero_move(mcts, board_size):
 if __name__ == '__main__':
 
     BOARD_SIZE = 7
-    MAX_GAMES = 2  # Number of games to play
+    MAX_GAMES = 25  # Number of games to play
     print_time = True
 
     game = HexGame(BOARD_SIZE)
@@ -52,6 +52,7 @@ if __name__ == '__main__':
     n1.load_checkpoint('./trained_networks/', 'best_100iters_run1.pth.tar')
     mcts1 = MCTS(game, n1, args)
     n1p = alphazero_move(mcts1, BOARD_SIZE)  # This is the move generating function
+    alphazero_description = "Alphazero player 100 iterations (run 1)"
 
     # Alphazero player
     n2 = NNetWrapper(game)
@@ -63,6 +64,7 @@ if __name__ == '__main__':
     depth = 2
     idtt = TerminatorHex(depth, do_transposition=True, do_iterative_deepening=True, max_time=2)
     idtt_move = idtt.terminator_move  # This is the move generating function
+    idtt_description = "ID-TT player"
 
     # MCTS player
     N = 2158
@@ -70,14 +72,15 @@ if __name__ == '__main__':
     MCTS_AI = MCTSHex(N, C_p, expansion_function=('constant', 1), random_seed="random",
                       enh_WinScan=False, enh_FreqVisitor=False, enh_EnsureTopLevelExplr=False)
     mcts_move = MCTS_AI.MCTS_move  # This is the move generating function
+    mcts_description = "MCTS player"
 
     # Define players here
     player1_move = n1p  # Replace with desired move generating function
-    player2_move = n2p  # Replace with desired move generating function
+    player2_move = mcts_move  # Replace with desired move generating function
 
     # Descriptions for plot legend
-    player1_description = "Alphazero player 100 iterations (run 1)"
-    player2_description = "Alphazero player 100 iterations (run 2)"
+    player1_description = alphazero_description+" (run 1)"
+    player2_description = mcts_description
 
     # Lists storing the results of the ratings
     p1_rating_list = []
