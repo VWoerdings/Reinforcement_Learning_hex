@@ -14,8 +14,6 @@ from MCTS import MCTS
 from utils import *
 
 from old_ai.HexBoard_old import HexBoard as HB
-from old_ai.TerminatorHex import TerminatorHex
-from old_ai.MCTSHex import MCTSHex
 
 """
 Find the optimal parameters for MCTS
@@ -38,6 +36,34 @@ def alphazero_move(mcts, board_size):
     return move_gen
 
 
+def play_1v1(p1_move, p2_move, p1_rating, p2_rating, cur_round):
+    if cur_round % 2 == 0:
+        # arena = Arena(n1p, n2p, game)
+        p1_color = HexBoard.BLUE
+        p2_color = HexBoard.RED
+        blue_ai_move = p1_move
+        red_ai_move = p2_move
+    else:
+        # arena = Arena(n2p, n1p, game)
+        p1_color = HexBoard.RED
+        p2_color = HexBoard.BLUE
+        blue_ai_move = p2_move
+        red_ai_move = p1_move
+
+    board = HB(BOARD_SIZE, n_players=0, enable_gui=False,
+               interactive_text=False, ai_color=None, ai_move=None, blue_ai_move=blue_ai_move,
+               red_ai_move=red_ai_move, move_list=[])
+    winning_color = board.get_winning_color()
+
+    if winning_color == p1_color:
+        p1_rating, p2_rating = ts.rate_1vs1(p1_rating, p2_rating)
+    elif winning_color == p2_color:
+        p2_rating, p1_rating = ts.rate_1vs1(p2_rating, p1_rating)
+    else:
+        raise ValueError("There was a draw or an unexpected winner: %d" % winning_color)
+    return p1_rating, p2_rating
+
+
 if __name__ == '__main__':
 
     BOARD_SIZE = 7
@@ -47,18 +73,12 @@ if __name__ == '__main__':
     game = HexGame(BOARD_SIZE)
     args = dotdict({'numMCTSSims': 25, 'cpuct': 1.0})
 
-    # Alphazero player
+    # Alphazero player 1
     n1 = NNetWrapper(game)
     n1.load_checkpoint('./trained_networks/', 'best_100iters_run1.pth.tar')
     mcts1 = MCTS(game, n1, args)
     n1p = alphazero_move(mcts1, BOARD_SIZE)  # This is the move generating function
-    alphazero_description = "Alphazero player 100 iterations (run 1)"
-
-    # Alphazero player
-    n2 = NNetWrapper(game)
-    n2.load_checkpoint('./trained_networks/', 'best_100iters_run2.pth.tar')
-    mcts2 = MCTS(game, n2, args)
-    n2p = alphazero_move(mcts2, BOARD_SIZE)  # This is the move generating function
+    alphazero_description1 = "Alphazero player 100 iterations (run 1)"
 
     # ID-TT player
     depth = 2
@@ -75,62 +95,46 @@ if __name__ == '__main__':
     mcts_description = "MCTS player"
 
     # Define players here
-    player1_move = n1p  # Replace with desired move generating function
-    player2_move = mcts_move  # Replace with desired move generating function
+    player1_move = n1p
+    player2_move = idtt_move
+    player3_move = mcts_move
 
     # Descriptions for plot legend
-    player1_description = alphazero_description+" (run 1)"
-    player2_description = mcts_description
+    player1_description = alphazero_description1
+    player2_description = idtt_description
+    player3_description = mcts_description
 
     # Lists storing the results of the ratings
-    p1_rating_list = []
-    p2_rating_list = []
-    p1_rating = ts.Rating()
-    p2_rating = ts.Rating()
+    player1_rating_list = []
+    player2_rating_list = []
+    player3_rating_list = []
+    player1_rating = ts.Rating()
+    player2_rating = ts.Rating()
+    player3_rating = ts.Rating()
 
     for game_n in range(MAX_GAMES):
-        print("Currently plaing game number %d of %d..." % (game_n, MAX_GAMES))
+        print("Currently playing round number %d of %d..." % (game_n, MAX_GAMES))
         start = time.time()
-
-        if game_n % 2 == 0:
-            # arena = Arena(n1p, n2p, game)
-            p1_color = HexBoard.BLUE
-            p2_color = HexBoard.RED
-            blue_ai_move = player1_move
-            red_ai_move = player2_move
-        else:
-            # arena = Arena(n2p, n1p, game)
-            p1_color = HexBoard.RED
-            p2_color = HexBoard.BLUE
-            blue_ai_move = player2_move
-            red_ai_move = player1_move
-
-        board = HB(BOARD_SIZE, n_players=0, enable_gui=False,
-                   interactive_text=False, ai_color=None, ai_move=None, blue_ai_move=blue_ai_move,
-                   red_ai_move=red_ai_move, move_list=[])
-        winning_color = board.get_winning_color()
-
-        if winning_color == p1_color:
-            p1_rating, p2_rating = ts.rate_1vs1(p1_rating, p2_rating)
-        elif winning_color == p2_color:
-            p2_rating, p1_rating = ts.rate_1vs1(p2_rating, p1_rating)
-        else:
-            raise ValueError("There was a draw or an unexpected winner: %d" % winning_color)
-
+        player1_rating, player2_rating = play_1v1(player1_move, player2_move, player1_rating, player2_rating, game_n)
+        player1_rating, player3_rating = play_1v1(player1_move, player3_move, player1_rating, player3_rating, game_n)
+        player2_rating, player3_rating = play_1v1(player2_move, player3_move, player2_rating, player3_rating, game_n)
         end = time.time()
         if print_time:
             print("Time elapsed is %.2f s" % (end - start))
 
-        p1_rating_list.append(p1_rating.mu)
-        p2_rating_list.append(p2_rating.mu)
+        player1_rating_list.append(player1_rating.mu)
+        player2_rating_list.append(player2_rating.mu)
+        player3_rating_list.append(player2_rating.mu)
 
     plt.figure()
-    plt.plot(np.squeeze(np.asarray([range(MAX_GAMES)])), np.squeeze(np.asarray(p1_rating_list)),
+    plt.plot(np.squeeze(np.asarray([range(MAX_GAMES)])), np.squeeze(np.asarray(player1_rating_list)),
              label=player1_description)
-    plt.plot(np.squeeze(np.asarray([range(MAX_GAMES)])), np.squeeze(np.asarray(p2_rating_list)),
+    plt.plot(np.squeeze(np.asarray([range(MAX_GAMES)])), np.squeeze(np.asarray(player2_rating_list)),
              label=player2_description)
+    plt.plot(np.squeeze(np.asarray([range(MAX_GAMES)])), np.squeeze(np.asarray(player3_rating_list)),
+             label=player3_description)
     plt.legend()
-    plt.title("Skill rating of 2 AI algorithms vs number of rounds played")
-    plt.xlabel("Game number")
+    plt.title("Skill rating of 3 Alphazero algorithms with different exploration")
+    plt.xlabel("Round number")
     plt.ylabel("Rating")
     plt.show()

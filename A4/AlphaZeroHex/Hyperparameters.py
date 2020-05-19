@@ -89,7 +89,7 @@ if __name__ == '__main__':
 
     # c=1.5 player
     n3 = NNetWrapper(game)
-    n3.load_checkpoint('./trained_networks/', 'c1_10iter.pth.tar')
+    n3.load_checkpoint('./trained_networks/', 'c1_5_10iter.pth.tar')
     mcts3 = MCTS(game, n3, args)
     n3p = alphazero_move(mcts3, BOARD_SIZE)  # This is the move generating function
     alphazero_description3 = "Alphazero player (C=1.5)"
