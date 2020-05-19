@@ -67,7 +67,7 @@ def play_1v1(p1_move, p2_move, p1_rating, p2_rating, cur_round):
 if __name__ == '__main__':
 
     BOARD_SIZE = 7
-    MAX_GAMES = 2  # Number of games to play
+    MAX_GAMES = 25  # Number of games to play
     print_time = True
 
     game = HexGame(BOARD_SIZE)

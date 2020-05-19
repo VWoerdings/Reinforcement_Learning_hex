@@ -14,6 +14,8 @@ from MCTS import MCTS
 from utils import *
 
 from old_ai.HexBoard_old import HexBoard as HB
+from old_ai.TerminatorHex import TerminatorHex
+from old_ai.MCTSHex import MCTSHex
 
 """
 Find the optimal parameters for MCTS
