@@ -124,7 +124,7 @@ if __name__ == '__main__':
 
         player1_rating_list.append(player1_rating.mu)
         player2_rating_list.append(player2_rating.mu)
-        player3_rating_list.append(player2_rating.mu)
+        player3_rating_list.append(player3_rating.mu)
 
     plt.figure()
     plt.plot(np.squeeze(np.asarray([range(MAX_GAMES)])), np.squeeze(np.asarray(player1_rating_list)),

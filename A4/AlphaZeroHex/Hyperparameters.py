@@ -67,7 +67,7 @@ def play_1v1(p1_move, p2_move, p1_rating, p2_rating, cur_round):
 if __name__ == '__main__':
 
     BOARD_SIZE = 7
-    MAX_GAMES = 25  # Number of games to play
+    MAX_GAMES = 2  # Number of games to play
     print_time = True
 
     game = HexGame(BOARD_SIZE)
@@ -124,7 +124,7 @@ if __name__ == '__main__':
 
         player1_rating_list.append(player1_rating.mu)
         player2_rating_list.append(player2_rating.mu)
-        player3_rating_list.append(player2_rating.mu)
+        player3_rating_list.append(player3_rating.mu)
 
     plt.figure()
     plt.plot(np.squeeze(np.asarray([range(MAX_GAMES)])), np.squeeze(np.asarray(player1_rating_list)),
