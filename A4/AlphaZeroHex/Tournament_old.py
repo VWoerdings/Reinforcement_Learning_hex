@@ -56,10 +56,10 @@ if __name__ == '__main__':
 
     # Alphazero player
     n2 = NNetWrapper(game)
-    n2.load_checkpoint('./trained_networks/', '1000_iter_checkpoint4.pth.tar')
+    n2.load_checkpoint('./trained_networks/', 'best_100iters_run2.pth.tar')
     mcts2 = MCTS(game, n2, args)
     n2p = alphazero_move(mcts2, BOARD_SIZE)  # This is the move generating function
-    alphazero_description2 = "Alphazero player 1000 iterations (checkpoint 4)"
+    alphazero_description2 = "Alphazero player 100 iterations (run 2)"
 
     # ID-TT player
     depth = 2
