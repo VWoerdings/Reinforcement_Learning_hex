@@ -2,8 +2,26 @@
 This script will train AlphaZero to play Hex
 Here you can edit parameters for the MCTS and iterations, epochs, etc.
 
-# hex
-This package contains the implementation of the neural network and Hex board and logic.
+# Tournament.py
+This script plays a tournament between an ID-TT, a MCTS and an AlphaZero player and determines their rating.
+
+# Tournament_old.py
+This script plays a tournament between two AlphaZero players.
+
+# Hyperparameters.py
+This script plays a tournament between three AlphaZero players with varying exploration and determines their rating (similar to Tournament.py).
+
+# hex/
+This package contains the implementation of the neural network, Hex board and logic.
+
+# old_ai/
+This package contains previous versions of the ID-TT and MCTS AIs.
+
+# trained_networks/
+This folder contains trained AlphaZero networks that can be loaded.
+
+# Arena.py
+This class plays two AlphaZero agents against eachother. This is used to train the networks.
 
 # Coach.py
 This class executes the training loops.
@@ -13,14 +31,9 @@ A class template for a game implementation. Implemented for Hex in the hex packa
 
 # MCTS.py
 Implementation of MCTS for AlphaZero.
-This file contains a temporary fix. Sometimes <em>counts</em> in <em>getActionProb()</em> will be 0. As a result, when <em>temp</em> is 0, the algorithms will pick a rondom move. Sometimes, this move is already played.
-For the temporary fix, when <em>counts</em> is 0, we recalculate possible moves and randomly select one of those. This fix should not be necessary.
 
 # NeuralNet.py
 A class template for a neural network. Implemented for Hex in the hex package.
-
-# pit.py
-Allows you to play against a trained AI (not ready yet for hex). Uses Arena.py
 
 # utils.py
 Some utils, needs to be inclueded.
